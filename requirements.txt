@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SwingFix AI - Golf Swing Analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<link rel="stylesheet" href="/static/style.css?v=8">
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">Swing<span>Fix</span> AI</div>
+  <div class="nav-links">
+    <button class="nav-link" onclick="scrollTo('dashboard')">Analyze</button>
+    <button class="nav-link" onclick="scrollTo('pricing')">Pricing</button>
+    <span class="nav-badge">3 free analyses</span>
+    <button class="nav-cta" onclick="scrollTo('dashboard')">Upload Swing</button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="hero">
+  <div>
+    <div class="hero-eyebrow">AI-Powered Swing Analysis</div>
+    <h1 class="hero-h1">Fix your swing.<br><em>See it from every angle.</em></h1>
+    <p class="hero-sub">Upload up to 3 angles of your swing — face-on, down-the-line, front-facing. Get a complete coaching report with faults, fixes, and drills in under 60 seconds.</p>
+    <div class="hero-actions">
+      <button class="btn-primary" onclick="scrollTo('dashboard')">Upload My Swing</button>
+      <button class="btn-secondary" onclick="scrollTo('dashboard')">Try a Demo Swing</button>
+    </div>
+    <div class="hero-stats">
+      <div>
+        <div class="hero-stat-num">3</div>
+        <div class="hero-stat-label">Swing views</div>
+      </div>
+      <div>
+        <div class="hero-stat-num">6</div>
+        <div class="hero-stat-label">Phases detected</div>
+      </div>
+      <div>
+        <div class="hero-stat-num">&lt;60s</div>
+        <div class="hero-stat-label">Full report</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-visual" id="heroVisual">
+    <div class="hero-visual-label" id="heroVisualLabel">Example overlay - yours appears here after analysis</div>
+    <svg width="100%" viewBox="0 0 340 260" xmlns="http://www.w3.org/2000/svg">
+      <!-- background grid -->
+      <line x1="0" y1="80" x2="340" y2="80" stroke="rgba(124,189,30,0.08)" stroke-width="1"/>
+      <line x1="0" y1="160" x2="340" y2="160" stroke="rgba(124,189,30,0.08)" stroke-width="1"/>
+      <line x1="170" y1="0" x2="170" y2="260" stroke="rgba(124,189,30,0.08)" stroke-width="1"/>
+
+      <!-- golfer silhouette simplified -->
+      <ellipse cx="170" cy="38" rx="20" ry="20" fill="none" stroke="#7CBD1E" stroke-width="1.5"/>
+      <!-- spine -->
+      <line x1="170" y1="58" x2="162" y2="140" stroke="#7CBD1E" stroke-width="2" stroke-dasharray="5,3"/>
+      <!-- legs -->
+      <line x1="162" y1="140" x2="148" y2="200" stroke="rgba(124,189,30,0.5)" stroke-width="1.5"/>
+      <line x1="162" y1="140" x2="178" y2="200" stroke="rgba(124,189,30,0.5)" stroke-width="1.5"/>
+      <!-- arm + club -->
+      <line x1="162" y1="90" x2="220" y2="60" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/>
+      <line x1="220" y1="60" x2="290" y2="30" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+
+      <!-- shoulder line -->
+      <line x1="130" y1="76" x2="210" y2="72" stroke="white" stroke-width="1.5" opacity="0.6"/>
+      <text x="212" y="75" font-size="9" fill="white" opacity="0.5" font-family="Inter,sans-serif">shoulder</text>
+      <!-- hip line -->
+      <line x1="138" y1="116" x2="196" y2="114" stroke="#E8B84B" stroke-width="1.5" opacity="0.8"/>
+      <text x="198" y="118" font-size="9" fill="#E8B84B" opacity="0.8" font-family="Inter,sans-serif">hip</text>
+
+      <!-- swing plane arc -->
+      <path d="M 290 28 Q 240 110 200 210" fill="none" stroke="#7CBD1E" stroke-width="1.5" stroke-dasharray="6,3" opacity="0.7"/>
+
+      <!-- head drift arrow (fault) -->
+      <path d="M 170 38 L 185 38" fill="none" stroke="#E24B4A" stroke-width="1.5" marker-end="url(#arr)"/>
+      <defs>
+        <marker id="arr" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L6,3 z" fill="#E24B4A"/>
+        </marker>
+      </defs>
+
+      <!-- club path indicator -->
+      <path d="M 196 114 Q 220 155 230 200" fill="none" stroke="#E24B4A" stroke-width="1.5" opacity="0.6" stroke-dasharray="4,3"/>
+
+      <!-- score badge -->
+      <rect x="14" y="14" width="64" height="34" rx="7" fill="rgba(124,189,30,0.15)" stroke="#7CBD1E" stroke-width="1"/>
+      <text x="46" y="27" text-anchor="middle" font-size="9" fill="#7CBD1E" font-family="Inter,sans-serif" font-weight="600">SCORE</text>
+      <text x="46" y="41" text-anchor="middle" font-size="14" fill="#7CBD1E" font-family="'Barlow Condensed',sans-serif" font-weight="800">74/100</text>
+
+      <!-- fault badge -->
+      <rect x="226" y="190" width="100" height="50" rx="7" fill="rgba(226,75,74,0.12)" stroke="#E24B4A" stroke-width="1"/>
+      <text x="276" y="208" text-anchor="middle" font-size="8" fill="#E24B4A" font-family="Inter,sans-serif" font-weight="600">FAULT DETECTED</text>
+      <text x="276" y="222" text-anchor="middle" font-size="9" fill="rgba(232,184,75,0.9)" font-family="Inter,sans-serif">Head forward</text>
+      <text x="276" y="234" text-anchor="middle" font-size="9" fill="rgba(232,184,75,0.9)" font-family="Inter,sans-serif">at impact</text>
+    </svg>
+  </div>
+</section>
+
+<!-- DASHBOARD -->
+<main class="dashboard" id="dashboard">
+
+  <!-- AI OUTPUT (hidden until analysis) -->
+  <div class="ai-output" id="aiOutput">
+    <div class="card-label">AI Coaching Report</div>
+    <div class="ai-bubble" id="aiBubble">
+      <div class="ai-typing"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div></div>
+    </div>
+  </div>
+
+  <div class="dashboard-grid">
+
+    <!-- UPLOAD CARD -->
+    <div class="card">
+      <div class="card-label">Upload Swing Videos</div>
+      <div class="upload-zone" id="uploadZone">
+        <span class="upload-icon">🎥</span>
+        <div class="upload-title">Drop videos or click to browse</div>
+        <div class="upload-hint">MP4, MOV · Up to 3 swing views</div>
+      </div>
+
+      <div class="view-slots" id="viewSlots">
+        <div class="view-slot" id="slot-faceon" onclick="assignSlot('faceon')">
+          <span class="view-slot-icon">👤</span>
+          <div class="view-slot-name">Face-on</div>
+          <span class="view-slot-check">✓</span>
+        </div>
+        <div class="view-slot" id="slot-dtl" onclick="assignSlot('dtl')">
+          <span class="view-slot-icon">↩</span>
+          <div class="view-slot-name">Down-line</div>
+          <span class="view-slot-check">✓</span>
+        </div>
+        <div class="view-slot" id="slot-front" onclick="assignSlot('front')">
+          <span class="view-slot-icon">＋</span>
+          <div class="view-slot-name">Front-facing</div>
+          <span class="view-slot-check">✓</span>
+        </div>
+      </div>
+
+      <button class="analyze-btn" id="analyzeBtn" onclick="runAnalysis()">
+        🤖 Analyze My Swing
+      </button>
+    </div>
+
+    <!-- QR + PHASES CARD -->
+    <div class="card">
+      <div class="card-label">Scan-to-Swing Upload</div>
+      <div class="qr-wrap">
+        <div class="qr-canvas-box">
+          <div id="qrcode"></div>
+        </div>
+        <div class="qr-info">
+          <div class="qr-title">Film on phone, analyze on desktop</div>
+          <div class="qr-desc">Scan with your phone camera to open a secure mobile upload page — record or pick from your camera roll.</div>
+          <div class="qr-steps">
+            <div class="qr-step"><div class="qr-dot">1</div>Scan QR with phone</div>
+            <div class="qr-step"><div class="qr-dot">2</div>Upload each view</div>
+            <div class="qr-step"><div class="qr-dot">3</div>Videos appear here instantly</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:14px; border-top:1px solid var(--border); padding-top:14px;">
+        <div class="card-label">Swing phases detected</div>
+        <div class="phase-strip" id="phaseStrip">
+          <div class="phase-seg" style="background:var(--green)" title="Setup"></div>
+          <div class="phase-seg" style="background:var(--green)" title="Takeaway"></div>
+          <div class="phase-seg" style="background:var(--green)" title="Top"></div>
+          <div class="phase-seg" style="background:var(--amber)" title="Downswing"></div>
+          <div class="phase-seg" style="background:var(--red)" title="Impact"></div>
+          <div class="phase-seg" title="Follow-through"></div>
+        </div>
+        <div class="phase-labels">
+          <span class="phase-label">Setup</span>
+          <span class="phase-label">Takeaway</span>
+          <span class="phase-label">Top</span>
+          <span class="phase-label">Downswing</span>
+          <span class="phase-label" style="color:var(--red)">▲ Impact</span>
+          <span class="phase-label">Follow</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCORE -->
+  <div class="card-full">
+    <div class="section-header">
+      <div class="section-title">Swing Score</div>
+      <div class="section-tag">Based on face-on + down-the-line</div>
+    </div>
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:center;">
+      <div class="score-wrap">
+        <svg class="score-arc-svg" width="200" height="116" viewBox="0 0 200 116" aria-label="Overall swing score 74 out of 100">
+          <path d="M 18 100 A 82 82 0 0 1 182 100" fill="none" stroke="rgba(124,189,30,0.15)" stroke-width="14" stroke-linecap="round"/>
+          <path id="scoreArc" d="M 18 100 A 82 82 0 0 1 182 100" fill="none" stroke="#7CBD1E" stroke-width="14" stroke-linecap="round"
+            stroke-dasharray="257" stroke-dashoffset="257" style="transition:stroke-dashoffset 1.5s cubic-bezier(0.22,1,0.36,1)"/>
+          <text id="scoreNumber" x="100" y="96" text-anchor="middle" font-family="'Barlow Condensed',sans-serif" font-size="40" font-weight="800" fill="#7CBD1E">—</text>
+          <text x="100" y="112" text-anchor="middle" font-family="Inter,sans-serif" font-size="10" fill="rgba(90,110,66,1)">/100 overall</text>
+        </svg>
+      </div>
+      <div>
+        <div class="metric-row"><div class="metric-lbl">Posture</div><div class="metric-track"><div class="metric-fill" id="m1" style="width:0%;background:var(--green)"></div></div><div class="metric-val" id="mv1" style="color:var(--text3)">—</div></div>
+        <div class="metric-row"><div class="metric-lbl">Tempo</div><div class="metric-track"><div class="metric-fill" id="m2" style="width:0%;background:var(--green)"></div></div><div class="metric-val" id="mv2" style="color:var(--text3)">—</div></div>
+        <div class="metric-row"><div class="metric-lbl">Rotation</div><div class="metric-track"><div class="metric-fill" id="m3" style="width:0%;background:var(--amber)"></div></div><div class="metric-val" id="mv3" style="color:var(--text3)">—</div></div>
+        <div class="metric-row"><div class="metric-lbl">Balance</div><div class="metric-track"><div class="metric-fill" id="m4" style="width:0%;background:var(--green)"></div></div><div class="metric-val" id="mv4" style="color:var(--text3)">—</div></div>
+        <div class="metric-row"><div class="metric-lbl">Club path</div><div class="metric-track"><div class="metric-fill" id="m5" style="width:0%;background:var(--red)"></div></div><div class="metric-val" id="mv5" style="color:var(--text3)">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dashboard-grid">
+
+    <!-- FAULTS + FIXES -->
+    <div class="card">
+      <div class="card-label">Faults detected</div>
+      <div id="faultsContainer">
+        <div style="color:var(--text3);font-size:12px;padding:20px 0;text-align:center;">Run analysis to detect faults</div>
+      </div>
+      <div style="margin-top:14px; border-top:1px solid var(--border); padding-top:14px;">
+        <div class="card-label">How to fix it</div>
+        <div id="fixesContainer">
+          <div style="color:var(--text3);font-size:12px;padding:8px 0;text-align:center;">Fixes will appear after analysis</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DRILLS + OVERLAY -->
+    <div class="card">
+      <div class="card-label">Recommended drills</div>
+      <div id="drillsContainer">
+        <div style="color:var(--text3);font-size:12px;padding:20px 0;text-align:center;">Drills will appear after analysis</div>
+      </div>
+
+      <div style="margin-top:14px; border-top:1px solid var(--border); padding-top:14px;">
+        <div class="card-label">Visual overlay</div>
+        <div class="overlay-frame" style="height:auto;min-height:120px;padding:0;background:var(--bg3);" id="overlayFrame">
+          <div id="overlayPlaceholder" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:160px;color:var(--text3);font-size:12px;gap:6px;">
+            <span style="font-size:24px;">&#127909;</span>
+            Upload a video and run analysis to see overlay
+          </div>
+          <div id="overlayVideoWrap" style="display:none;position:relative;width:100%;">
+            <video id="overlayVideo" style="width:100%;border-radius:10px;display:block;" preload="metadata" playsinline></video>
+            <canvas id="overlayCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:10px;pointer-events:none;"></canvas>
+            <div class="overlay-badge" id="overlayBadge">Face-on</div>
+            <div class="overlay-badge-right" id="overlayPhaseBadge">Setup</div>
+          </div>
+        </div>
+        <div class="tab-row" id="overlayTabs">
+          <button class="tab active" onclick="switchOverlayView('faceon',this)">Face-on</button>
+          <button class="tab" onclick="switchOverlayView('dtl',this)">Down-line</button>
+          <button class="tab" onclick="switchOverlayView('front',this)">Front-facing</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REPLAY -->
+  <div class="card-full">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div class="section-title">Frame-by-frame replay</div>
+      <div class="tab-row" id="speedTabs" style="margin-bottom:0">
+        <button class="tab active" onclick="setPlaybackRate(0.25,this)">0.25x</button>
+        <button class="tab" onclick="setPlaybackRate(0.5,this)">0.5x</button>
+        <button class="tab" onclick="setPlaybackRate(1,this)">1x</button>
+      </div>
+    </div>
+    <div id="replayPlaceholder" style="border:1.5px dashed var(--border2);border-radius:10px;padding:32px 16px;text-align:center;color:var(--text3);font-size:12px;margin-bottom:12px;">
+      Upload a video to enable replay
+    </div>
+    <div id="replayVideoWrap" style="display:none;">
+      <div id="replayStage" style="position:relative;width:100%;background:#000;border-radius:10px;overflow:hidden;margin-bottom:12px;">
+        <video id="replayVideo" style="width:100%;display:block;max-height:300px;object-fit:contain;" preload="metadata" playsinline></video>
+        <canvas id="replayCanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></canvas>
+        <div id="skelHint" style="position:absolute;bottom:10px;left:10px;background:rgba(0,0,0,0.65);color:#E8B84B;border:1px solid rgba(232,184,75,0.5);border-radius:6px;padding:5px 10px;font-size:11px;">Run "Analyze My Swing" to see your skeleton + pro overlay</div>
+        <button onclick="toggleFullscreen()" aria-label="Fullscreen" style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.55);color:#e8f0d8;border:1px solid rgba(124,189,30,0.4);border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;">Fullscreen</button>
+      </div>
+      <div class="tab-row" id="ghostTabs" style="margin-bottom:10px;">
+        <span style="font-size:11px;color:var(--text3);align-self:center;margin-right:4px;">Compare:</span>
+        <button class="tab active" onclick="setGhostMode('setup',this)">My setup</button>
+        <button class="tab" onclick="setGhostMode('pro',this)">Pro form</button>
+        <button class="tab" onclick="setGhostMode('off',this)">Off</button>
+      </div>
+      <div class="tab-row" id="replayViewTabs" style="margin-bottom:10px;">
+        <button class="tab active" onclick="switchReplayView('faceon',this)">Face-on</button>
+        <button class="tab" onclick="switchReplayView('dtl',this)">Down-line</button>
+        <button class="tab" onclick="switchReplayView('front',this)">Front-facing</button>
+      </div>
+      <div class="replay-controls">
+        <button class="replay-btn" onclick="seekStep(-0.04)" aria-label="Back one frame">&#9198;</button>
+        <button class="replay-btn play" id="playBtn" onclick="togglePlay()" aria-label="Play or pause">&#9654;</button>
+        <input type="range" class="replay-slider" min="0" max="1000" value="0" id="frameSlider" oninput="seekTo(this.value)" aria-label="Scrub video">
+        <button class="replay-btn" onclick="seekStep(0.04)" aria-label="Forward one frame">&#9197;</button>
+        <div class="frame-label" id="frameLabel">0:00 / 0:00</div>
+      </div>
+    </div>
+    <div class="phase-timeline">
+      <span class="phase-tl-label">Setup</span>
+      <span class="phase-tl-label">Takeaway</span>
+      <span class="phase-tl-label">Top</span>
+      <span class="phase-tl-label">Downswing</span>
+      <span class="phase-tl-label">Impact</span>
+      <span class="phase-tl-label">Follow-through</span>
+    </div>
+  </div>
+
+</main>
+
+<!-- PRICING -->
+<section class="pricing-section" id="pricing">
+  <div class="pricing-inner">
+    <div class="pricing-header">
+      <h2 class="pricing-h2">Simple pricing. No fluff.</h2>
+      <p class="pricing-sub">Start free. Upgrade when you're hooked.</p>
+    </div>
+    <div class="pricing-grid">
+      <div class="pricing-card">
+        <div class="pricing-plan">Free</div>
+        <div class="pricing-price">$0 <span>/ month</span></div>
+        <div class="pricing-desc">3 swing analyses per month. Everything you need to try it out.</div>
+        <ul class="pricing-features">
+          <li>3 analyses / month</li>
+          <li>Up to 2 video views</li>
+          <li>Fault detection</li>
+          <li>3 recommended drills</li>
+          <li>Basic swing score</li>
+        </ul>
+        <button class="pricing-btn" onclick="scrollTo('dashboard')">Start free</button>
+      </div>
+      <div class="pricing-card featured">
+        <div class="pricing-featured-badge">Most popular</div>
+        <div class="pricing-plan">Premium</div>
+        <div class="pricing-price">$14 <span>/ month</span></div>
+        <div class="pricing-desc">Unlimited analyses, all 3 views, visual overlays, and progress tracking.</div>
+        <ul class="pricing-features">
+          <li>Unlimited analyses</li>
+          <li>All 3 swing views</li>
+          <li>Visual overlays + pro comparison</li>
+          <li>Frame-by-frame replay</li>
+          <li>Progress history</li>
+          <li>Scan-to-Swing QR upload</li>
+        </ul>
+        <button class="pricing-btn">Get Premium</button>
+      </div>
+      <div class="pricing-card">
+        <div class="pricing-plan">Coach Pro</div>
+        <div class="pricing-price">$49 <span>/ month</span></div>
+        <div class="pricing-desc">For PGA coaches managing multiple students and delivering reports.</div>
+        <ul class="pricing-features">
+          <li>Everything in Premium</li>
+          <li>Up to 20 student profiles</li>
+          <li>Branded PDF reports</li>
+          <li>One-time AI report ($4.99 add-on)</li>
+          <li>Human coach review add-on</li>
+          <li>Coach marketplace listing</li>
+        </ul>
+        <button class="pricing-btn">Start Coach trial</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">Swing<span>Fix</span> AI</div>
+  <p class="footer-tagline">Upload 3 videos. Get a score. Get faults. Get drills.</p>
+</footer>
+
+<!-- ANALYZING OVERLAY -->
+<div class="analyzing-overlay" id="analyzingOverlay">
+  <div class="spinner"></div>
+  <div class="analyzing-text">Analyzing your swing…</div>
+  <div class="analyzing-sub" id="analyzingStep">Detecting body joints and swing phases</div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <div class="toast-dot"></div>
+  <span id="toastMsg">Video uploaded</span>
+</div>
+
+<input type="file" id="slotPicker" accept="video/*" style="display:none" onchange="handleSlotPick(this)">
+<input type="file" id="zonePicker" accept="video/*" multiple style="display:none" onchange="handleFiles(this.files)">
+<script src="/static/app.js?v=8"></script>
+</body>
+</html>

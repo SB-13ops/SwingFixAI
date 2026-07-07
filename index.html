@@ -1,0 +1,782 @@
+// SwingFix AI - frontend logic
+// Served from the FastAPI backend; API is same-origin.
+var API_BASE = (window.location.protocol === 'file:') ? 'http://127.0.0.1:8000' : window.location.origin;
+
+// ---- SESSION + QR (Scan-to-Swing) ----
+var sessionId = null;
+var remotePollTimer = null;
+
+async function initSession() {
+  try {
+    var res = await fetch(API_BASE + '/api/session', { method: 'POST' });
+    var data = await res.json();
+    sessionId = data.session_id;
+    var qrUrl = (data.lan_url || API_BASE) + '/mobile/' + sessionId;
+    new QRCode(document.getElementById('qrcode'), {
+      text: qrUrl, width: 98, height: 98,
+      colorDark: '#0C1409', colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+    // Poll for videos uploaded from the phone
+    remotePollTimer = setInterval(pollRemoteVideos, 3000);
+  } catch (e) {
+    // Backend not running - draw placeholder QR pointing at localhost
+    new QRCode(document.getElementById('qrcode'), {
+      text: API_BASE, width: 98, height: 98,
+      colorDark: '#0C1409', colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  }
+}
+
+async function pollRemoteVideos() {
+  if (!sessionId) return;
+  try {
+    var res = await fetch(API_BASE + '/api/session/' + sessionId + '/videos');
+    var data = await res.json();
+    var gotNew = false;
+    slotOrder.forEach(function(slot) {
+      if (data[slot] && !slots[slot]) {
+        slots[slot] = true;
+        remoteSlots[slot] = true;
+        document.getElementById('slot-' + slot).classList.add('loaded');
+        showToast(slotLabel(slot) + ' received from phone');
+        gotNew = true;
+      }
+    });
+    if (gotNew) {
+      updateAnalyzeBtn();
+      var firstSlot = slotOrder.find(function(s) { return slots[s]; });
+      if (firstSlot) wireReplayVideo(firstSlot);
+    }
+  } catch (e) { /* backend gone - stop quietly */ }
+}
+
+function scrollTo(id) {
+  document.getElementById(id).scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 3500);
+}
+
+// ---- FILES ----
+var uploadedFiles = {};              // local File objects
+var remoteSlots = {};                // slots uploaded via phone (server-side)
+var slots = { faceon: false, dtl: false, front: false };
+var slotOrder = ['faceon', 'dtl', 'front'];
+var pendingSlot = null;
+var overlayFaults = null;
+var lastJobId = null;
+var skeletonTracks = {};      // slot -> [{t, pts}]
+var currentOverlaySlot = null;
+var ghostMode = 'setup';      // 'setup' | 'pro' | 'off'
+
+var uploadZone = document.getElementById('uploadZone');
+uploadZone.addEventListener('click', function() {
+  var p = document.getElementById('zonePicker'); p.value = ''; p.click();
+});
+uploadZone.addEventListener('dragenter', function(e) { e.preventDefault(); e.stopPropagation(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragover',  function(e) { e.preventDefault(); e.stopPropagation(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', function(e) { e.preventDefault(); e.stopPropagation(); uploadZone.classList.remove('dragover'); });
+uploadZone.addEventListener('drop', function(e) {
+  e.preventDefault(); e.stopPropagation();
+  uploadZone.classList.remove('dragover');
+  handleFiles(e.dataTransfer.files);
+});
+document.addEventListener('dragover', function(e) { e.preventDefault(); });
+document.addEventListener('drop',     function(e) { e.preventDefault(); });
+
+function handleFiles(files) {
+  Array.from(files).forEach(function(f) {
+    var slot = slotOrder.find(function(s) { return !slots[s]; });
+    if (slot) assignFileToSlot(f, slot);
+  });
+  updateAnalyzeBtn();
+}
+
+function handleSlotPick(input) {
+  var f = input.files[0];
+  if (f && pendingSlot) { assignFileToSlot(f, pendingSlot); pendingSlot = null; updateAnalyzeBtn(); }
+}
+
+function assignFileToSlot(file, slot) {
+  uploadedFiles[slot] = file;
+  slots[slot] = true;
+  document.getElementById('slot-' + slot).classList.add('loaded');
+  showToast(file.name + ' ready as ' + slotLabel(slot));
+  var firstSlot = slotOrder.find(function(s) { return slots[s]; });
+  if (firstSlot === slot) wireReplayVideo(slot);
+}
+
+function assignSlot(slotName) {
+  if (slots[slotName]) { wireReplayVideo(slotName); return; }
+  pendingSlot = slotName;
+  var p = document.getElementById('slotPicker'); p.value = ''; p.click();
+}
+
+function slotLabel(s) { return { faceon: 'Face-on', dtl: 'Down-line', front: 'Front-facing' }[s] || s; }
+
+function updateAnalyzeBtn() {
+  var loaded = Object.values(slots).filter(Boolean).length;
+  document.getElementById('analyzeBtn').disabled = loaded === 0;
+}
+
+// Get a playable URL for a slot: local blob or server stream
+function videoUrlFor(slot) {
+  if (uploadedFiles[slot]) return URL.createObjectURL(uploadedFiles[slot]);
+  if (remoteSlots[slot] && sessionId) return API_BASE + '/api/session/' + sessionId + '/video/' + slot;
+  return null;
+}
+
+// ---- REPLAY ----
+function wireReplayVideo(slot) {
+  var url = videoUrlFor(slot);
+  if (!url) return;
+  currentOverlaySlot = slot;
+  var ph = document.getElementById('replayPlaceholder');
+  var wrap = document.getElementById('replayVideoWrap');
+  var vid = document.getElementById('replayVideo');
+  if (ph) ph.style.display = 'none';
+  if (wrap) wrap.style.display = 'block';
+  vid.src = url;
+  vid.playbackRate = getActiveRate();
+  vid.ontimeupdate = function() { syncReplaySlider(vid); drawReplayOverlay(); };
+  vid.onseeked = function() { drawReplayOverlay(); };
+  vid.onloadedmetadata = function() {
+    updateTimeLabel(vid);
+    var c = document.getElementById('replayCanvas');
+    if (c) { c.width = vid.videoWidth || 640; c.height = vid.videoHeight || 360; }
+  };
+  var tabs = document.querySelectorAll('#replayViewTabs .tab');
+  tabs.forEach(function(t) { t.classList.remove('active'); });
+  var idx = slotOrder.indexOf(slot);
+  if (tabs[idx]) tabs[idx].classList.add('active');
+  wireOverlayVideo(slot);
+}
+
+function getActiveRate() {
+  var active = document.querySelector('#speedTabs .tab.active');
+  if (!active) return 0.25;
+  return parseFloat(active.textContent) || 0.25;
+}
+
+function switchReplayView(slot, el) {
+  document.getElementById('replayViewTabs').querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
+  el.classList.add('active');
+  if (slots[slot]) wireReplayVideo(slot);
+  else showToast('No video uploaded for ' + slotLabel(slot));
+}
+
+function syncReplaySlider(vid) {
+  if (!vid.duration) return;
+  document.getElementById('frameSlider').value = (vid.currentTime / vid.duration) * 1000;
+  updateTimeLabel(vid);
+  updatePhaseHighlight(vid.currentTime / vid.duration);
+}
+
+function seekTo(val) {
+  var vid = document.getElementById('replayVideo');
+  if (!vid || !vid.duration) return;
+  vid.currentTime = (val / 1000) * vid.duration;
+  updateTimeLabel(vid);
+  updatePhaseHighlight(val / 1000);
+}
+
+function seekStep(delta) {
+  var vid = document.getElementById('replayVideo');
+  if (!vid || !vid.duration) return;
+  vid.currentTime = Math.max(0, Math.min(vid.duration, vid.currentTime + delta));
+  syncReplaySlider(vid);
+}
+
+function fmt(s) {
+  s = Math.max(0, s || 0);
+  return Math.floor(s/60) + ':' + ('0' + Math.floor(s % 60)).slice(-2);
+}
+
+function updateTimeLabel(vid) {
+  var el = document.getElementById('frameLabel');
+  if (el) el.textContent = fmt(vid.currentTime) + ' / ' + fmt(vid.duration);
+}
+
+function setPlaybackRate(rate, el) {
+  document.getElementById('speedTabs').querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
+  el.classList.add('active');
+  var vid = document.getElementById('replayVideo');
+  if (vid) vid.playbackRate = rate;
+}
+
+var playing = false;
+function togglePlay() {
+  var vid = document.getElementById('replayVideo');
+  var btn = document.getElementById('playBtn');
+  if (!vid || !vid.src) { showToast('Upload a video first'); return; }
+  if (playing) { vid.pause(); playing = false; btn.innerHTML = '&#9654;'; }
+  else {
+    vid.play(); playing = true; btn.innerHTML = '&#10074;&#10074;';
+    vid.onended = function() { playing = false; btn.innerHTML = '&#9654;'; };
+    requestAnimationFrame(replayAnimLoop);
+  }
+}
+
+function replayAnimLoop() {
+  if (!playing) return;
+  drawReplayOverlay();
+  requestAnimationFrame(replayAnimLoop);
+}
+
+function toggleFullscreen() {
+  var stage = document.getElementById('replayStage');
+  if (!stage) return;
+  if (document.fullscreenElement) { document.exitFullscreen(); }
+  else if (stage.requestFullscreen) {
+    stage.requestFullscreen();
+    var vid = document.getElementById('replayVideo');
+    if (vid) vid.style.maxHeight = '100vh';
+  }
+}
+document.addEventListener('fullscreenchange', function() {
+  var vid = document.getElementById('replayVideo');
+  if (vid && !document.fullscreenElement) vid.style.maxHeight = '300px';
+});
+
+function setGhostMode(mode, el) {
+  ghostMode = mode;
+  document.getElementById('ghostTabs').querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
+  el.classList.add('active');
+  drawReplayOverlay();
+  drawOverlayFrame();
+}
+
+// Phase boundaries: replaced by real detected boundaries after analysis
+var phaseBounds = [0, 0.12, 0.28, 0.48, 0.68, 0.85];
+
+function updatePhaseHighlight(pct) {
+  var labels = document.querySelectorAll('.phase-tl-label');
+  labels.forEach(function(el, i) {
+    el.classList.remove('active');
+    var lo = phaseBounds[i], hi = (i+1 < phaseBounds.length) ? phaseBounds[i+1] : 1.01;
+    if (pct >= lo && pct < hi) el.classList.add('active');
+  });
+}
+
+// ---- OVERLAY ----
+function wireOverlayVideo(slot) {
+  var url = videoUrlFor(slot);
+  if (!url) return;
+  currentOverlaySlot = slot;
+  var ph = document.getElementById('overlayPlaceholder');
+  var wrap = document.getElementById('overlayVideoWrap');
+  var vid = document.getElementById('overlayVideo');
+  var badge = document.getElementById('overlayBadge');
+  if (ph) ph.style.display = 'none';
+  if (wrap) wrap.style.display = 'block';
+  vid.src = url;
+  if (badge) badge.textContent = slotLabel(slot);
+  vid.onloadedmetadata = function() {
+    var canvas = document.getElementById('overlayCanvas');
+    canvas.width = vid.videoWidth || 300;
+    canvas.height = vid.videoHeight || 160;
+    // Seek to detected impact point if we have it, else 68%
+    var impactPct = (phaseBounds.length >= 5) ? phaseBounds[4] : 0.68;
+    vid.currentTime = vid.duration * impactPct;
+  };
+  vid.onseeked = function() { drawOverlayFrame(); };
+  vid.ontimeupdate = function() { drawOverlayFrame(); };
+}
+
+function switchOverlayView(slot, el) {
+  document.getElementById('overlayTabs').querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
+  el.classList.add('active');
+  if (slots[slot]) wireOverlayVideo(slot);
+  else showToast('No video uploaded for ' + slotLabel(slot));
+}
+
+function skeletonAt(track, t) {
+  // Find nearest sampled skeleton frames and interpolate
+  if (!track || !track.length) return null;
+  if (t <= track[0].t) return track[0].pts;
+  if (t >= track[track.length-1].t) return track[track.length-1].pts;
+  for (var i = 0; i < track.length - 1; i++) {
+    if (t >= track[i].t && t <= track[i+1].t) {
+      var a = track[i], b = track[i+1];
+      var f = (t - a.t) / Math.max(b.t - a.t, 1e-6);
+      var out = {};
+      Object.keys(a.pts).forEach(function(k) {
+        var p = a.pts[k], q = b.pts[k];
+        if (p && q) out[k] = [p[0] + (q[0]-p[0])*f, p[1] + (q[1]-p[1])*f];
+        else out[k] = p || q;
+      });
+      return out;
+    }
+  }
+  return track[track.length-1].pts;
+}
+
+var SKELETON_LINKS = [
+  ['ls','rs'], ['ls','le'], ['le','lw'], ['rs','re'], ['re','rw'],
+  ['ls','lh'], ['rs','rh'], ['lh','rh'],
+  ['lh','lk'], ['lk','la'], ['rh','rk'], ['rk','ra']
+];
+
+function drawSkeleton(ctx, pts, w, h, color, lineW, dashed) {
+  if (!pts) return;
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = lineW;
+  ctx.setLineDash(dashed ? [10, 8] : []);
+  SKELETON_LINKS.forEach(function(link) {
+    var a = pts[link[0]], b = pts[link[1]];
+    if (!a || !b) return;
+    ctx.beginPath();
+    ctx.moveTo(a[0]*w, a[1]*h);
+    ctx.lineTo(b[0]*w, b[1]*h);
+    ctx.stroke();
+  });
+  ctx.setLineDash([]);
+  ['ls','rs','le','re','lw','rw','lh','rh','lk','rk'].forEach(function(k) {
+    var p = pts[k];
+    if (!p) return;
+    ctx.beginPath();
+    ctx.arc(p[0]*w, p[1]*h, dashed ? lineW : lineW + 2, 0, Math.PI*2);
+    ctx.fill();
+  });
+  if (pts.nose) {
+    ctx.beginPath();
+    ctx.arc(pts.nose[0]*w, pts.nose[1]*h, w * 0.02, 0, Math.PI*2);
+    ctx.stroke();
+  }
+}
+
+function bodyDims(setupPts) {
+  if (!setupPts || !setupPts.lh || !setupPts.rh || !setupPts.ls || !setupPts.rs) return null;
+  var hipC = [(setupPts.lh[0]+setupPts.rh[0])/2, (setupPts.lh[1]+setupPts.rh[1])/2];
+  var shC  = [(setupPts.ls[0]+setupPts.rs[0])/2, (setupPts.ls[1]+setupPts.rs[1])/2];
+  var torso = Math.hypot(shC[0]-hipC[0], shC[1]-hipC[1]);
+  var hipW = Math.abs(setupPts.lh[0]-setupPts.rh[0]);
+  return { hipC: hipC, shC: shC, torso: torso, hipW: hipW };
+}
+
+function buildProImpact(track) {
+  // Idealized impact pose scaled to the user's own proportions:
+  // hips shifted toward target and open, head held back at setup position,
+  // spine tilt maintained, lead leg posting up, hands ahead of the ball.
+  if (!track || !track.length) return null;
+  var setup = skeletonAt(track, Math.min(phaseBounds[1] * 0.5, 0.08));
+  var finish = track[track.length-1].pts;
+  var d = bodyDims(setup);
+  if (!d || !setup.nose || !finish || !finish.lw) return null;
+
+  // Target direction from where the hands finish relative to setup
+  var dir = (finish.lw[0] - setup.lw[0]) >= 0 ? 1 : -1;
+  var leadHipKey  = (dir > 0) ? (setup.lh[0] > setup.rh[0] ? 'lh' : 'rh') : (setup.lh[0] < setup.rh[0] ? 'lh' : 'rh');
+  var trailHipKey = leadHipKey === 'lh' ? 'rh' : 'lh';
+  var lead = leadHipKey === 'lh' ? {h:'lh',k:'lk',a:'la',s:'ls',e:'le',w:'lw'} : {h:'rh',k:'rk',a:'ra',s:'rs',e:'re',w:'rw'};
+  var trail = leadHipKey === 'lh' ? {h:'rh',k:'rk',a:'ra',s:'rs',e:'re',w:'rw'} : {h:'lh',k:'lk',a:'la',s:'ls',e:'le',w:'lw'};
+
+  var p = {};
+  // Feet stay planted where the user set up
+  p[lead.a] = setup[lead.a] ? setup[lead.a].slice() : null;
+  p[trail.a] = setup[trail.a] ? setup[trail.a].slice() : null;
+  if (!p[lead.a] || !p[trail.a]) return null;
+
+  // Hip center: shifted toward target ~55% of hip width, same height as setup
+  var hipC = [d.hipC[0] + dir * d.hipW * 0.55, d.hipC[1]];
+  // Hips open ~40deg: lead hip pulled back (narrower on screen), keep width * 0.75
+  p[lead.h]  = [hipC[0] + dir * d.hipW * 0.28, hipC[1] - d.torso * 0.02];
+  p[trail.h] = [hipC[0] - dir * d.hipW * 0.47, hipC[1] + d.torso * 0.02];
+
+  // Shoulders: spine tilt maintained from setup, upper body slightly behind hips
+  var spineVec = [d.shC[0] - d.hipC[0], d.shC[1] - d.hipC[1]];
+  var shC = [hipC[0] + spineVec[0] - dir * d.hipW * 0.30, hipC[1] + spineVec[1]];
+  p[lead.s]  = [shC[0] + dir * d.hipW * 0.42, shC[1] - d.torso * 0.06];
+  p[trail.s] = [shC[0] - dir * d.hipW * 0.42, shC[1] + d.torso * 0.10];
+
+  // Head: stays back at the setup position (the whole point)
+  p.nose = setup.nose.slice();
+
+  // Lead leg posts up straight: knee on the hip-to-ankle line
+  p[lead.k] = [ (p[lead.h][0] + p[lead.a][0]) / 2, (p[lead.h][1] + p[lead.a][1]) / 2 ];
+  // Trail leg: knee kicked in toward target, heel starting to release
+  p[trail.k] = [ (p[trail.h][0] + p[trail.a][0]) / 2 + dir * d.hipW * 0.25,
+                 (p[trail.h][1] + p[trail.a][1]) / 2 ];
+
+  // Hands ahead: both wrists low and target-side of hip center
+  var handX = hipC[0] + dir * d.torso * 0.40;
+  var handY = hipC[1] + d.torso * 0.35;
+  p[lead.w]  = [handX, handY];
+  p[trail.w] = [handX - dir * d.hipW * 0.10, handY + d.torso * 0.03];
+  p[lead.e]  = [ (p[lead.s][0] + p[lead.w][0]) / 2,  (p[lead.s][1] + p[lead.w][1]) / 2 ];
+  p[trail.e] = [ (p[trail.s][0] + p[trail.w][0]) / 2 + dir * 0.02, (p[trail.s][1] + p[trail.w][1]) / 2 + 0.02 ];
+
+  return p;
+}
+
+function drawScene(vid, canvas) {
+  if (!vid || !canvas || !vid.videoWidth || !vid.duration) return;
+  canvas.width = vid.videoWidth;
+  canvas.height = vid.videoHeight;
+  var ctx = canvas.getContext('2d');
+  var w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  var track = skeletonTracks[currentOverlaySlot];
+  if (!track || !track.length) return;
+
+  var t = vid.currentTime / vid.duration;
+
+  // Ghost layer
+  if (ghostMode === 'setup') {
+    var setupPts = skeletonAt(track, Math.min(phaseBounds[1] * 0.5, 0.08));
+    drawSkeleton(ctx, setupPts, w, h, 'rgba(255,255,255,0.75)', Math.max(2, w*0.0025), true);
+  } else if (ghostMode === 'pro') {
+    var proPts = buildProImpact(track);
+    if (proPts) drawSkeleton(ctx, proPts, w, h, 'rgba(232,184,75,0.95)', Math.max(2, w*0.003), true);
+  }
+
+  // Live skeleton at current playback time
+  var livePts = skeletonAt(track, t);
+  drawSkeleton(ctx, livePts, w, h, '#7CBD1E', Math.max(3, w*0.004), false);
+
+  // Head-movement trace when relevant
+  if (overlayFaults && overlayFaults.some(function(f){ return /head/i.test(f.title); })) {
+    var s = skeletonAt(track, Math.min(phaseBounds[1] * 0.5, 0.08));
+    if (s && s.nose && livePts && livePts.nose) {
+      ctx.strokeStyle = '#E24B4A';
+      ctx.lineWidth = Math.max(2, w*0.003);
+      ctx.beginPath();
+      ctx.moveTo(s.nose[0]*w, s.nose[1]*h);
+      ctx.lineTo(livePts.nose[0]*w, livePts.nose[1]*h);
+      ctx.stroke();
+    }
+  }
+}
+
+function drawOverlayFrame() {
+  drawScene(document.getElementById('overlayVideo'), document.getElementById('overlayCanvas'));
+}
+
+function drawReplayOverlay() {
+  drawScene(document.getElementById('replayVideo'), document.getElementById('replayCanvas'));
+}
+
+// ---- METRICS ----
+function animateMetrics(scores) {
+  var keys  = ['posture','tempo','rotation','balance','clubPath'];
+  var fills = ['m1','m2','m3','m4','m5'];
+  var vals  = ['mv1','mv2','mv3','mv4','mv5'];
+  keys.forEach(function(k, i) {
+    var v = scores[k] || 0;
+    setTimeout(function() {
+      var fill = document.getElementById(fills[i]);
+      var val  = document.getElementById(vals[i]);
+      if (!fill || !val) return;
+      fill.style.width = v + '%';
+      var c = v >= 75 ? 'var(--green)' : v >= 60 ? 'var(--amber)' : 'var(--red)';
+      fill.style.background = c;
+      val.textContent = v;
+      val.style.color = c;
+    }, i * 140);
+  });
+  setTimeout(function() {
+    var o = scores.overall || 0;
+    var arc = document.getElementById('scoreArc');
+    var num = document.getElementById('scoreNumber');
+    if (arc) arc.style.strokeDashoffset = 257 - (o / 100) * 257;
+    if (num) num.textContent = o;
+  }, 200);
+}
+
+function renderFaults(faults, fixes) {
+  var fc = document.getElementById('faultsContainer');
+  if (fc) {
+    fc.innerHTML = '';
+    faults.forEach(function(f) {
+      var d = document.createElement('div');
+      d.className = f.severity === 'high' ? 'fault critical' : 'fault';
+      var t = document.createElement('div'); t.className = 'fault-title'; t.textContent = f.title;
+      var y = document.createElement('div'); y.className = 'fault-why';   y.textContent = f.why;
+      d.appendChild(t); d.appendChild(y);
+      fc.appendChild(d);
+    });
+  }
+  var xc = document.getElementById('fixesContainer');
+  if (xc) {
+    xc.innerHTML = '';
+    fixes.forEach(function(fix) {
+      var d = document.createElement('div');
+      d.className = 'fix';
+      var i = document.createElement('span'); i.className = 'fix-icon'; i.innerHTML = '&#10003;';
+      var s = document.createElement('span');
+      if (typeof fix === 'object' && fix.cue) {
+        var cue = document.createElement('div');
+        cue.style.cssText = 'font-weight:600;color:var(--text);margin-bottom:2px;';
+        cue.textContent = fix.cue;
+        var why = document.createElement('div');
+        why.style.cssText = 'font-size:11px;';
+        why.textContent = fix.why || '';
+        var chk = document.createElement('div');
+        chk.style.cssText = 'font-size:11px;color:var(--green);margin-top:2px;';
+        chk.textContent = fix.checkpoint ? 'Check: ' + fix.checkpoint : '';
+        s.appendChild(cue); s.appendChild(why);
+        if (fix.checkpoint) s.appendChild(chk);
+      } else {
+        s.textContent = fix;
+      }
+      d.appendChild(i); d.appendChild(s);
+      xc.appendChild(d);
+    });
+  }
+}
+
+function renderDrills(drills) {
+  var dc = document.getElementById('drillsContainer');
+  if (!dc) return;
+  dc.innerHTML = '';
+  drills.forEach(function(d, i) {
+    var el = document.createElement('div');
+    el.className = 'drill';
+    el.style.alignItems = 'flex-start';
+    var num = document.createElement('div'); num.className = 'drill-num'; num.textContent = (i+1);
+    var body = document.createElement('div');
+    var name = document.createElement('div'); name.className = 'drill-name'; name.textContent = d.name;
+    var tag  = document.createElement('div'); tag.className = 'drill-tag';  tag.textContent = (d.duration || '') + ' - ' + (d.trains || '');
+    body.appendChild(name); body.appendChild(tag);
+    if (d.steps && d.steps.length) {
+      var ol = document.createElement('ol');
+      ol.style.cssText = 'margin:6px 0 4px 16px;padding:0;';
+      d.steps.forEach(function(step) {
+        var li = document.createElement('li');
+        li.style.cssText = 'font-size:11px;color:var(--text2);margin-bottom:2px;font-family:var(--font-body);';
+        li.textContent = step;
+        ol.appendChild(li);
+      });
+      body.appendChild(ol);
+    }
+    if (d.reps) {
+      var reps = document.createElement('div');
+      reps.style.cssText = 'font-size:11px;color:var(--text2);';
+      reps.textContent = 'Reps: ' + d.reps;
+      body.appendChild(reps);
+    }
+    if (d.feel) {
+      var feel = document.createElement('div');
+      feel.style.cssText = 'font-size:11px;color:var(--green);margin-top:2px;';
+      feel.textContent = 'Feel: ' + d.feel;
+      body.appendChild(feel);
+    }
+    el.appendChild(num); el.appendChild(body);
+    dc.appendChild(el);
+  });
+}
+
+function renderPhaseStrip(phases) {
+  var strip = document.getElementById('phaseStrip');
+  if (!strip) return;
+  var map = { good:'var(--green)', warn:'var(--amber)', fault:'var(--red)', pending:'var(--border)' };
+  strip.innerHTML = '';
+  phases.forEach(function(p) {
+    var seg = document.createElement('div');
+    seg.className = 'phase-seg';
+    seg.style.background = map[p.status] || 'var(--border)';
+    seg.title = p.name;
+    strip.appendChild(seg);
+  });
+}
+
+// ---- ANALYSIS ----
+async function runAnalysis() {
+  var overlay = document.getElementById('analyzingOverlay');
+  var stepEl  = document.getElementById('analyzingStep');
+  overlay.classList.add('show');
+  stepEl.textContent = 'Uploading videos...';
+
+  var jobId = null;
+  try {
+    var hasLocal = slotOrder.some(function(s) { return uploadedFiles[s]; });
+    var res;
+    if (hasLocal) {
+      var formData = new FormData();
+      slotOrder.forEach(function(slot) {
+        if (uploadedFiles[slot]) formData.append(slot, uploadedFiles[slot], uploadedFiles[slot].name);
+      });
+      if (sessionId) formData.append('session_id', sessionId);
+      res = await fetch(API_BASE + '/api/analyze', { method: 'POST', body: formData });
+    } else if (sessionId) {
+      // All videos came from the phone - analyze server-side session files
+      res = await fetch(API_BASE + '/api/session/' + sessionId + '/analyze', { method: 'POST' });
+    } else {
+      throw new Error('No videos');
+    }
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var job = await res.json();
+    jobId = job.job_id;
+    lastJobId = jobId;
+  } catch(e) {
+    overlay.classList.remove('show');
+    showToast('Backend not reachable - demo mode');
+    applyResults(getDemoData());
+    return;
+  }
+
+  var result = await pollJob(jobId, stepEl);
+  overlay.classList.remove('show');
+
+  if (result && result._error) {
+    showToast('Analysis error: ' + String(result._error).slice(0, 120));
+    applyResults(getDemoData());
+    return;
+  }
+  if (result && result.coaching) {
+    overlayFaults = result.coaching.faults;
+    if (result.skeletons) skeletonTracks = result.skeletons;
+    var hint = document.getElementById('skelHint');
+    if (hint && Object.keys(skeletonTracks).length) hint.style.display = 'none';
+    if (result.phase_bounds && result.phase_bounds.length === 6) {
+      phaseBounds = result.phase_bounds;   // real detected boundaries
+    }
+    applyResults(result.coaching);
+    renderReportExtras(result.report_frames || []);
+    var firstSlot = slotOrder.find(function(s) { return slots[s]; });
+    if (firstSlot) wireOverlayVideo(firstSlot);
+    showToast(result.coaching._source === 'ai'
+      ? 'Analysis complete - AI coaching + skeleton ready'
+      : 'Analysis complete - measured coaching + skeleton ready (AI text unavailable)');
+  } else {
+    showToast('Analysis failed - demo mode');
+    applyResults(getDemoData());
+  }
+}
+
+async function pollJob(jobId, stepEl) {
+  for (var i = 0; i < 150; i++) {
+    await new Promise(function(r) { setTimeout(r, 2000); });
+    try {
+      var res = await fetch(API_BASE + '/api/job/' + jobId);
+      var job = await res.json();
+      if (stepEl) stepEl.textContent = job.step || 'Processing...';
+      if (job.status === 'complete') return job.result;
+      if (job.status === 'error') { console.error(job.error); return { _error: job.error || 'Unknown analysis error' }; }
+    } catch(e) { /* keep polling */ }
+  }
+  return null;
+}
+
+function applyResults(r) {
+  var summaryText = r.summary + (r.practice_plan ? '\n\nWeekly plan: ' + r.practice_plan : '');
+  showAIOutput(summaryText);
+  animateMetrics(r.scores);
+  renderFaults(r.faults, r.fixes);
+  renderDrills(r.drills);
+  renderPhaseStrip(r.phases);
+  overlayFaults = r.faults;
+}
+
+function showAIOutput(summary) {
+  var panel  = document.getElementById('aiOutput');
+  var bubble = document.getElementById('aiBubble');
+  if (!panel || !bubble) return;
+  panel.classList.add('visible');
+  bubble.innerHTML = '';
+  summary.split('\n\n').forEach(function(para) {
+    var p = document.createElement('p');
+    p.style.cssText = 'font-size:13px;line-height:1.6;margin-bottom:8px;';
+    p.textContent = para;
+    bubble.appendChild(p);
+  });
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function swapHeroVisual(frameSlots) {
+  if (!frameSlots.length || !lastJobId) return;
+  var hero = document.getElementById('heroVisual');
+  var label = document.getElementById('heroVisualLabel');
+  if (!hero) return;
+  var svg = hero.querySelector('svg');
+  if (svg) svg.remove();
+  var old = hero.querySelector('img');
+  if (old) old.remove();
+  var img = document.createElement('img');
+  img.src = API_BASE + '/api/job/' + lastJobId + '/frame/' + frameSlots[0];
+  img.style.cssText = 'width:100%;border-radius:10px;display:block;';
+  img.alt = 'Your analyzed swing with skeleton overlay';
+  hero.appendChild(img);
+  if (label) label.textContent = 'Your swing - ' + slotLabel(frameSlots[0]) + ' at impact';
+}
+
+function renderReportExtras(frameSlots) {
+  swapHeroVisual(frameSlots);
+  var bubble = document.getElementById('aiBubble');
+  if (!bubble || !lastJobId) return;
+
+  // Annotated impact frames from the analysis
+  frameSlots.forEach(function(slot) {
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'margin-top:12px;';
+    var label = document.createElement('div');
+    label.style.cssText = 'font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:6px;';
+    label.textContent = slotLabel(slot) + ' - impact vs setup';
+    var img = document.createElement('img');
+    img.src = API_BASE + '/api/job/' + lastJobId + '/frame/' + slot;
+    img.style.cssText = 'width:100%;border-radius:10px;display:block;';
+    img.alt = 'Annotated ' + slotLabel(slot) + ' impact frame with skeleton overlay';
+    wrap.appendChild(label);
+    wrap.appendChild(img);
+    bubble.appendChild(wrap);
+  });
+
+  // Download report button
+  var btn = document.createElement('a');
+  btn.href = API_BASE + '/api/job/' + lastJobId + '/report';
+  btn.target = '_blank';
+  btn.textContent = 'Download full report';
+  btn.style.cssText = 'display:inline-block;margin-top:14px;padding:10px 20px;background:var(--green);color:#0a1007;font-weight:700;border-radius:8px;text-decoration:none;font-size:14px;';
+  bubble.appendChild(btn);
+}
+
+function getDemoData() {
+  return {
+    summary: "Demo mode: the analysis server is not running, so this is sample coaching, not your real swing data. Start the backend with START.bat to get real MediaPipe pose analysis.",
+    scores: { posture:72, tempo:80, rotation:61, balance:68, clubPath:54, overall:67 },
+    faults: [
+      { title:"Early extension at impact", why:"Hips thrust toward the ball, raising body height and causing thin shots and toe hits.", severity:"high" },
+      { title:"Loss of lag on downswing", why:"The wrist angle releases too early, costing clubhead speed and forcing an over-the-top delivery.", severity:"high" },
+      { title:"Limited hip rotation", why:"Hips are not clearing through impact, restricting power transfer.", severity:"medium" }
+    ],
+    fixes: [
+      { cue:"Keep your belt buckle pointed at the ball until your hands pass your trail thigh.", why:"Stops the hips thrusting toward the ball, which is what raises your body and thins the strike.", checkpoint:"Video yourself face-on: your rear should stay on an imaginary wall behind you through impact." },
+      { cue:"Drag the butt of the club toward the ball - hold the wrist angle as long as you can.", why:"Retains lag so the club releases at the ball instead of before it, adding speed and compression.", checkpoint:"At hip-high on the downswing the club shaft should still point behind you, not at the ball." },
+      { cue:"Feel your lead hip pocket move behind you on the downswing, not toward the ball.", why:"Converts the slide into rotation, which clears space for your arms and fixes the path.", checkpoint:"Finish balanced on your lead foot with your chest facing the target - if you fall toward the ball, it was a slide." }
+    ],
+    drills: [
+      { name:"Alignment stick hip drill", duration:"5 min", trains:"Stops hips thrusting, maintains spine angle",
+        steps:["Stick an alignment rod in the ground just behind your rear at address","Make slow half swings keeping light contact with the rod through impact","Gradually build to full-speed swings without losing contact"],
+        reps:"3 sets of 10 slow swings", feel:"Your rear stays back and your chest rotates down and through - like sitting into a chair while turning" },
+      { name:"Pump drill", duration:"8 min", trains:"Grooves lag and correct downswing sequence",
+        steps:["Swing to the top and pause","Pump down slowly to hip height keeping the wrist angle, then return to the top","On the third pump, swing through and hit the ball"],
+        reps:"10 balls, 3 pumps each", feel:"The club feels 'late' - your body leads and the clubhead trails until the last moment" },
+      { name:"Step-through drill", duration:"5 min", trains:"Forces hip rotation and weight transfer",
+        steps:["Set up normally, then narrow your stance","Swing and let your trail foot step through toward the target after impact, like a pitcher","Walk toward the target as you finish"],
+        reps:"15 swings, no ball at first", feel:"All your weight releases onto the lead side - impossible to hang back or slide" }
+    ],
+    practice_plan: "Week 1: alignment stick drill only, every practice session, slow swings until the feel is automatic. Week 2: keep the stick drill as a warmup and add the pump drill with short irons. Week 3: add the step-through drill and start hitting full 7-irons checking your finish balance. Take it to the course when you can hold a balanced finish for 3 seconds on 8 out of 10 swings.",
+    phases: [
+      { name:"Setup", status:"good" }, { name:"Takeaway", status:"good" },
+      { name:"Top of backswing", status:"warn" }, { name:"Downswing", status:"fault" },
+      { name:"Impact", status:"fault" }, { name:"Follow-through", status:"warn" }
+    ]
+  };
+}
+
+function setTab(el, groupId) {
+  document.getElementById(groupId).querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
+  el.classList.add('active');
+}
+
+// ---- INIT ----
+updateAnalyzeBtn();
+initSession();
