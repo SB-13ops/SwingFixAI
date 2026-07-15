@@ -634,6 +634,7 @@ async function runAnalysis() {
   if (result && result.coaching) {
     overlayFaults = result.coaching.faults;
     if (result.skeletons) skeletonTracks = result.skeletons;
+    applyViewCorrections(result.view_corrections || {});
     var hint = document.getElementById('skelHint');
     if (hint && Object.keys(skeletonTracks).length) hint.style.display = 'none';
     if (result.phase_bounds && result.phase_bounds.length === 6) {
@@ -706,6 +707,34 @@ function swapHeroVisual(frameSlots) {
   img.alt = 'Your analyzed swing with skeleton overlay';
   hero.appendChild(img);
   if (label) label.textContent = 'Your swing - ' + slotLabel(frameSlots[0]) + ' at impact';
+}
+
+function applyViewCorrections(corrections) {
+  var keys = Object.keys(corrections);
+  if (!keys.length) return;
+  // Remap local file references so replay tabs match the corrected labels
+  var newFiles = {}, newRemote = {};
+  slotOrder.forEach(function(up) {
+    var final = corrections[up] || up;
+    if (uploadedFiles[up]) newFiles[final] = uploadedFiles[up];
+    if (remoteSlots[up]) newRemote[final] = true;
+  });
+  // Slots not mentioned keep their files unless overwritten
+  slotOrder.forEach(function(s) {
+    if (!newFiles[s] && uploadedFiles[s] && !corrections[s]) newFiles[s] = uploadedFiles[s];
+    if (!newRemote[s] && remoteSlots[s] && !corrections[s]) newRemote[s] = true;
+  });
+  uploadedFiles = newFiles;
+  remoteSlots = newRemote;
+  slotOrder.forEach(function(s) {
+    slots[s] = !!(uploadedFiles[s] || remoteSlots[s]);
+    var el = document.getElementById('slot-' + s);
+    if (el) el.classList.toggle('loaded', slots[s]);
+  });
+  var msg = keys.map(function(u) { return slotLabel(u) + ' was actually ' + slotLabel(corrections[u]); }).join('; ');
+  showToast('Auto-detected camera angles: ' + msg);
+  var firstSlot = slotOrder.find(function(s) { return slots[s]; });
+  if (firstSlot) wireReplayVideo(firstSlot);
 }
 
 function renderReportExtras(frameSlots) {

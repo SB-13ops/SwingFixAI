@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<link rel="stylesheet" href="/static/style.css?v=8">
+<link rel="stylesheet" href="/static/style.css?v=9">
 </head>
 <body>
 
@@ -384,6 +384,6 @@
 
 <input type="file" id="slotPicker" accept="video/*" style="display:none" onchange="handleSlotPick(this)">
 <input type="file" id="zonePicker" accept="video/*" multiple style="display:none" onchange="handleFiles(this.files)">
-<script src="/static/app.js?v=8"></script>
+<script src="/static/app.js?v=9"></script>
 </body>
 </html>
