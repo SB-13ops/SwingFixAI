@@ -1,481 +1,159 @@
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --green: #7CBD1E;
-    --green-dark: #5a9614;
-    --green-dim: rgba(124,189,30,0.12);
-    --amber: #E8B84B;
-    --red: #E24B4A;
-    --bg: #0C1409;
-    --bg2: #131a0e;
-    --bg3: #1a2412;
-    --surface: #1e2b16;
-    --surface2: #243318;
-    --border: rgba(124,189,30,0.18);
-    --border2: rgba(124,189,30,0.32);
-    --text: #e8f0d8;
-    --text2: #9aaf7a;
-    --text3: #5a6e42;
-    --font-display: 'Barlow Condensed', sans-serif;
-    --font-body: 'Inter', sans-serif;
-  }
-
-  html { scroll-behavior: smooth; }
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SwingFix AI - Upload from Phone</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--font-body);
-    min-height: 100vh;
-    line-height: 1.5;
+    background: #0C1409; color: #e8f0d8;
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh; padding: 24px 20px;
   }
-
-  /* ── NAV ── */
-  nav {
-    position: sticky; top: 0; z-index: 100;
-    background: rgba(12,20,9,0.92);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--border);
-    padding: 0 2rem;
-    display: flex; align-items: center; justify-content: space-between;
-    height: 56px;
-  }
-  .nav-logo {
-    font-family: var(--font-display);
-    font-size: 22px; font-weight: 800; letter-spacing: 0.5px;
-    color: var(--text);
-  }
-  .nav-logo span { color: var(--green); }
-  .nav-links { display: flex; gap: 6px; align-items: center; }
-  .nav-link {
-    font-size: 13px; color: var(--text2); padding: 6px 12px;
-    border-radius: 6px; cursor: pointer; border: none; background: none;
-    font-family: var(--font-body); transition: color 0.15s, background 0.15s;
-  }
-  .nav-link:hover { color: var(--text); background: var(--surface); }
-  .nav-cta {
-    background: var(--green); color: #0C1409;
-    font-weight: 600; font-size: 13px;
-    padding: 7px 16px; border-radius: 6px;
-    border: none; cursor: pointer; font-family: var(--font-body);
-    transition: opacity 0.15s;
-  }
-  .nav-cta:hover { opacity: 0.88; }
-  .nav-badge {
-    font-size: 11px; padding: 3px 8px; border-radius: 4px;
-    border: 1px solid var(--border2); color: var(--green);
-    font-family: var(--font-body); margin-left: 4px;
-  }
-
-  /* ── HERO ── */
-  .hero {
-    padding: 80px 2rem 60px;
-    max-width: 1100px; margin: 0 auto;
-    display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center;
-  }
-  .hero-eyebrow {
-    font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
-    color: var(--green); font-weight: 600; margin-bottom: 12px;
-    font-family: var(--font-body);
-  }
-  .hero-h1 {
-    font-family: var(--font-display);
-    font-size: clamp(42px, 5vw, 64px);
-    font-weight: 800; line-height: 1.0;
-    margin-bottom: 16px; color: var(--text);
-  }
-  .hero-h1 em { color: var(--green); font-style: normal; }
-  .hero-sub {
-    font-size: 16px; color: var(--text2); line-height: 1.6;
-    margin-bottom: 28px; max-width: 420px;
-  }
-  .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-  .btn-primary {
-    background: var(--green); color: #0a1007;
-    font-weight: 700; font-size: 15px; font-family: var(--font-display);
-    letter-spacing: 0.5px; padding: 12px 24px; border-radius: 8px;
-    border: none; cursor: pointer; transition: opacity 0.15s, transform 0.1s;
-  }
-  .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
-  .btn-secondary {
-    background: transparent; color: var(--text2);
-    font-size: 14px; font-family: var(--font-body);
-    padding: 12px 20px; border-radius: 8px;
-    border: 1px solid var(--border2); cursor: pointer;
-    transition: background 0.15s, color 0.15s;
-  }
-  .btn-secondary:hover { background: var(--surface); color: var(--text); }
-
-  .hero-stats {
-    display: flex; gap: 24px; margin-top: 32px;
-    padding-top: 24px; border-top: 1px solid var(--border);
-  }
-  .hero-stat-num {
-    font-family: var(--font-display); font-size: 28px; font-weight: 800;
-    color: var(--green);
-  }
-  .hero-stat-label { font-size: 12px; color: var(--text3); margin-top: 2px; }
-
-  /* hero visual — swing path diagram */
-  .hero-visual {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 28px;
-    position: relative; overflow: hidden;
-  }
-  .hero-visual-label {
-    font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
-    color: var(--text3); margin-bottom: 16px; font-family: var(--font-body);
-  }
-
-  /* ── MAIN DASHBOARD ── */
-  .dashboard { max-width: 1100px; margin: 0 auto; padding: 0 2rem 80px; }
-  .section-header {
-    display: flex; align-items: baseline; justify-content: space-between;
-    margin-bottom: 16px;
-  }
-  .section-title {
-    font-family: var(--font-display); font-size: 20px; font-weight: 700;
-    letter-spacing: 0.3px;
-  }
-  .section-tag {
-    font-size: 11px; color: var(--text3); font-family: var(--font-body);
-    letter-spacing: 0.5px;
-  }
-
-  .dashboard-grid {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
-    margin-bottom: 14px;
-  }
-  .dashboard-grid-3 {
-    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px;
-    margin-bottom: 14px;
-  }
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 14px; padding: 20px 22px;
-  }
-  .card-full {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 14px; padding: 20px 22px; margin-bottom: 14px;
-  }
-  .card-label {
-    font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase;
-    color: var(--text3); font-family: var(--font-body);
-    margin-bottom: 12px;
-  }
-
-  /* ── UPLOAD ── */
-  .upload-zone {
-    border: 1.5px dashed var(--border2);
-    border-radius: 10px; padding: 22px 16px; text-align: center;
-    cursor: pointer; transition: border-color 0.2s, background 0.2s;
+  .logo { font-family: 'Barlow Condensed', sans-serif; font-size: 26px; font-weight: 800; text-align: center; margin-bottom: 4px; }
+  .logo span { color: #7CBD1E; }
+  .sub { text-align: center; font-size: 13px; color: #9aaf7a; margin-bottom: 28px; }
+  .slot {
+    background: #1e2b16; border: 1px solid rgba(124,189,30,0.2);
+    border-radius: 14px; padding: 18px; margin-bottom: 14px;
     position: relative;
   }
-  .upload-zone:hover, .upload-zone.dragover {
-    border-color: var(--green); background: var(--green-dim);
+  .slot.done { border-color: #7CBD1E; }
+  .slot-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .slot-desc { font-size: 12px; color: #9aaf7a; margin-bottom: 12px; }
+  .slot-btns { display: flex; gap: 8px; }
+  .btn {
+    flex: 1; padding: 12px; border-radius: 8px; border: none;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    font-family: 'Inter', sans-serif;
   }
-  .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-  .upload-icon {
-    font-size: 32px; margin-bottom: 8px; display: block;
-    color: var(--text3);
+  .btn-record { background: #7CBD1E; color: #0a1007; }
+  .btn-pick { background: transparent; color: #9aaf7a; border: 1px solid rgba(124,189,30,0.3); }
+  .check { position: absolute; top: 14px; right: 16px; color: #7CBD1E; font-size: 20px; display: none; }
+  .slot.done .check { display: block; }
+  .progress {
+    height: 4px; background: #243318; border-radius: 2px;
+    margin-top: 10px; overflow: hidden; display: none;
   }
-  .upload-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
-  .upload-hint { font-size: 11px; color: var(--text3); }
+  .progress-fill { height: 100%; background: #7CBD1E; width: 0%; transition: width 0.3s; }
+  .status { text-align: center; font-size: 13px; color: #9aaf7a; margin-top: 24px; line-height: 1.6; }
+  .done-msg {
+    display: none; text-align: center; margin-top: 24px;
+    background: rgba(124,189,30,0.1); border: 1px solid #7CBD1E;
+    border-radius: 12px; padding: 20px; font-size: 14px; line-height: 1.6;
+  }
+</style>
+</head>
+<body>
 
-  .view-slots { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 12px; }
-  .view-slot {
-    border: 1px solid var(--border);
-    border-radius: 8px; padding: 10px 8px;
-    text-align: center; position: relative; cursor: pointer;
-    transition: border-color 0.2s, background 0.2s;
-  }
-  .view-slot:hover { border-color: var(--border2); background: var(--surface2); }
-  .view-slot.loaded { border-color: var(--green); background: rgba(124,189,30,0.08); }
-  .view-slot-icon { font-size: 18px; margin-bottom: 4px; display: block; color: var(--text3); }
-  .view-slot.loaded .view-slot-icon { color: var(--green); }
-  .view-slot-name { font-size: 10px; color: var(--text3); }
-  .view-slot.loaded .view-slot-name { color: var(--text2); }
-  .view-slot-check {
-    position: absolute; top: 5px; right: 6px;
-    font-size: 11px; color: var(--green); display: none;
-  }
-  .view-slot.loaded .view-slot-check { display: block; }
+<div class="logo">Swing<span>Fix</span> AI</div>
+<div class="sub">Upload your swing videos - they appear on your computer instantly</div>
 
-  .analyze-btn {
-    width: 100%; margin-top: 12px; padding: 13px;
-    background: var(--green); color: #0a1007;
-    font-family: var(--font-display); font-weight: 700; font-size: 16px;
-    letter-spacing: 0.5px; border: none; border-radius: 8px;
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
-    gap: 8px; transition: opacity 0.15s;
-  }
-  .analyze-btn:hover { opacity: 0.88; }
-  .analyze-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+<div class="slot" id="slot-faceon">
+  <span class="check">&#10003;</span>
+  <div class="slot-title">1. Face-on view</div>
+  <div class="slot-desc">Camera facing your chest, full body in frame</div>
+  <div class="slot-btns">
+    <button class="btn btn-record" onclick="pick('faceon', true)">Record</button>
+    <button class="btn btn-pick" onclick="pick('faceon', false)">Camera roll</button>
+  </div>
+  <div class="progress" id="prog-faceon"><div class="progress-fill" id="fill-faceon"></div></div>
+</div>
 
-  /* ── QR SECTION ── */
-  .qr-wrap { display: flex; gap: 14px; align-items: flex-start; }
-  .qr-canvas-box {
-    flex-shrink: 0; width: 110px; height: 110px;
-    background: #fff; border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    padding: 6px;
-  }
-  #qrcode canvas, #qrcode img { width: 98px !important; height: 98px !important; }
-  .qr-info { flex: 1; }
-  .qr-title { font-size: 14px; font-weight: 600; margin-bottom: 5px; }
-  .qr-desc { font-size: 11px; color: var(--text2); line-height: 1.5; margin-bottom: 10px; }
-  .qr-steps { display: flex; flex-direction: column; gap: 5px; }
-  .qr-step { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--text2); }
-  .qr-dot {
-    width: 17px; height: 17px; border-radius: 50%;
-    background: var(--green); color: #0a1007;
-    font-size: 9px; font-weight: 700;
-    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-  }
+<div class="slot" id="slot-dtl">
+  <span class="check">&#10003;</span>
+  <div class="slot-title">2. Down-the-line view</div>
+  <div class="slot-desc">Camera behind you, looking down the target line</div>
+  <div class="slot-btns">
+    <button class="btn btn-record" onclick="pick('dtl', true)">Record</button>
+    <button class="btn btn-pick" onclick="pick('dtl', false)">Camera roll</button>
+  </div>
+  <div class="progress" id="prog-dtl"><div class="progress-fill" id="fill-dtl"></div></div>
+</div>
 
-  /* ── PHASE STRIP ── */
-  .phase-strip { display: flex; gap: 3px; margin: 12px 0 4px; }
-  .phase-seg {
-    flex: 1; height: 5px; border-radius: 3px;
-    background: var(--border);
-  }
-  .phase-labels { display: flex; justify-content: space-between; }
-  .phase-label { font-size: 9px; color: var(--text3); }
+<div class="slot" id="slot-front">
+  <span class="check">&#10003;</span>
+  <div class="slot-title">3. Front-facing view</div>
+  <div class="slot-desc">Camera facing your back, down the line from the other side</div>
+  <div class="slot-btns">
+    <button class="btn btn-record" onclick="pick('front', true)">Record</button>
+    <button class="btn btn-pick" onclick="pick('front', false)">Camera roll</button>
+  </div>
+  <div class="progress" id="prog-front"><div class="progress-fill" id="fill-front"></div></div>
+</div>
 
-  /* ── SCORE ARC ── */
-  .score-wrap {
-    display: flex; flex-direction: column; align-items: center; padding: 8px 0 4px;
-  }
-  .score-arc-svg { overflow: visible; }
-  .score-number {
-    font-family: var(--font-display); font-size: 40px; font-weight: 800;
-    color: var(--green); line-height: 1;
-  }
-  .score-sub { font-size: 11px; color: var(--text3); }
+<div class="status" id="status">Upload at least one view, then return to your computer.</div>
+<div class="done-msg" id="doneMsg">
+  <strong>All videos uploaded!</strong><br>
+  Return to your computer - your videos are ready to analyze.
+</div>
 
-  /* ── METRIC BARS ── */
-  .metric-row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
-  .metric-lbl { font-size: 12px; color: var(--text2); width: 72px; flex-shrink: 0; }
-  .metric-track { flex: 1; height: 5px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
-  .metric-fill { height: 100%; border-radius: 3px; transition: width 1.4s cubic-bezier(0.22,1,0.36,1); }
-  .metric-val { font-size: 12px; font-weight: 600; width: 26px; text-align: right; }
+<input type="file" id="picker" accept="video/*" style="display:none">
 
-  /* ── FAULT CARDS ── */
-  .fault {
-    border-left: 3px solid var(--amber);
-    padding: 10px 12px; margin-bottom: 8px;
-    background: rgba(232,184,75,0.06);
-    border-radius: 0 8px 8px 0;
-  }
-  .fault.critical { border-left-color: var(--red); background: rgba(226,75,74,0.06); }
-  .fault-title { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
-  .fault-why { font-size: 11px; color: var(--text2); line-height: 1.45; }
+<script>
+var SESSION_ID = window.location.pathname.split('/').pop();
+var uploaded = { faceon: false, dtl: false, front: false };
+var currentSlot = null;
 
-  /* ── FIXES ── */
-  .fix {
-    display: flex; align-items: flex-start; gap: 8px;
-    padding: 8px 10px; margin-bottom: 6px;
-    background: var(--surface2); border-radius: 7px;
-    font-size: 12px; color: var(--text2); line-height: 1.4;
-  }
-  .fix-icon { color: var(--green); margin-top: 1px; flex-shrink: 0; font-size: 14px; }
+function pick(slot, useCamera) {
+  currentSlot = slot;
+  var input = document.getElementById('picker');
+  input.value = '';
+  if (useCamera) input.setAttribute('capture', 'environment');
+  else input.removeAttribute('capture');
+  input.click();
+}
 
-  /* ── DRILLS ── */
-  .drill {
-    display: flex; align-items: flex-start; gap: 12px;
-    padding: 10px 0; border-bottom: 1px solid var(--border);
-  }
-  .drill:last-child { border-bottom: none; }
-  .drill-num {
-    font-family: var(--font-display); font-size: 22px; font-weight: 800;
-    color: var(--green); line-height: 1; flex-shrink: 0;
-  }
-  .drill-name { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
-  .drill-tag { font-size: 11px; color: var(--text3); }
+document.getElementById('picker').addEventListener('change', function() {
+  var file = this.files[0];
+  if (!file || !currentSlot) return;
+  uploadFile(currentSlot, file);
+});
 
-  /* ── OVERLAY / REPLAY ── */
-  .overlay-frame {
-    width: 100%; height: 170px; background: var(--bg3);
-    border-radius: 10px; position: relative; overflow: hidden;
-    display: flex; align-items: center; justify-content: center;
-    margin-bottom: 8px; border: 1px solid var(--border);
-  }
-  .overlay-badge {
-    position: absolute; top: 8px; left: 8px;
-    font-size: 9px; background: rgba(0,0,0,0.6); color: var(--text2);
-    padding: 3px 7px; border-radius: 4px; font-family: var(--font-body);
-  }
-  .overlay-badge-right {
-    position: absolute; top: 8px; right: 8px;
-    font-size: 9px; background: rgba(124,189,30,0.2); color: var(--green);
-    padding: 3px 7px; border-radius: 4px; font-family: var(--font-body);
-    border: 1px solid rgba(124,189,30,0.3);
-  }
+function uploadFile(slot, file) {
+  var prog = document.getElementById('prog-' + slot);
+  var fill = document.getElementById('fill-' + slot);
+  prog.style.display = 'block';
 
-  /* ── TAB ROW ── */
-  .tab-row { display: flex; gap: 5px; margin-bottom: 10px; }
-  .tab {
-    font-size: 11px; font-family: var(--font-body);
-    padding: 5px 11px; border-radius: 5px;
-    border: 1px solid var(--border); cursor: pointer;
-    color: var(--text3); background: transparent;
-    transition: all 0.15s;
-  }
-  .tab:hover { color: var(--text2); border-color: var(--border2); }
-  .tab.active { background: var(--green); color: #0a1007; border-color: var(--green); font-weight: 600; }
+  var formData = new FormData();
+  formData.append('slot', slot);
+  formData.append('file', file, file.name);
 
-  /* ── REPLAY BAR ── */
-  .replay-controls {
-    display: flex; align-items: center; gap: 10px;
-  }
-  .replay-btn {
-    background: transparent; border: none; cursor: pointer;
-    color: var(--text2); font-size: 18px; padding: 4px;
-    transition: color 0.15s; line-height: 1;
-  }
-  .replay-btn.play { color: var(--green); font-size: 22px; }
-  .replay-btn:hover { color: var(--text); }
-  .replay-slider {
-    -webkit-appearance: none; appearance: none;
-    flex: 1; height: 4px; background: var(--surface2);
-    border-radius: 2px; outline: none; cursor: pointer;
-  }
-  .replay-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 14px; height: 14px; border-radius: 50%;
-    background: var(--green); cursor: pointer;
-    box-shadow: 0 0 0 3px rgba(124,189,30,0.2);
-  }
-  .frame-label { font-size: 11px; color: var(--text3); white-space: nowrap; min-width: 100px; text-align: right; }
-  .phase-timeline { display: flex; justify-content: space-between; margin-top: 5px; padding: 0 2px; }
-  .phase-tl-label { font-size: 9px; color: var(--text3); }
-  .phase-tl-label.active { color: var(--red); font-weight: 600; }
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/session/' + SESSION_ID + '/upload');
+  xhr.upload.onprogress = function(e) {
+    if (e.lengthComputable) fill.style.width = (e.loaded / e.total * 100) + '%';
+  };
+  xhr.onload = function() {
+    if (xhr.status === 200) {
+      uploaded[slot] = true;
+      document.getElementById('slot-' + slot).classList.add('done');
+      prog.style.display = 'none';
+      updateStatus();
+    } else {
+      document.getElementById('status').textContent = 'Upload failed - try again.';
+      prog.style.display = 'none';
+    }
+  };
+  xhr.onerror = function() {
+    document.getElementById('status').textContent = 'Upload failed - check your WiFi connection.';
+    prog.style.display = 'none';
+  };
+  xhr.send(formData);
+}
 
-  /* ── AI OUTPUT PANEL ── */
-  .ai-output {
-    display: none; background: var(--surface2);
-    border: 1px solid var(--border2);
-    border-radius: 14px; padding: 20px 22px;
-    margin-bottom: 14px;
+function updateStatus() {
+  var count = Object.values(uploaded).filter(Boolean).length;
+  if (count === 3) {
+    document.getElementById('status').style.display = 'none';
+    document.getElementById('doneMsg').style.display = 'block';
+  } else {
+    document.getElementById('status').textContent =
+      count + ' of 3 uploaded. Your computer sees them instantly - upload more or return to your desktop.';
   }
-  .ai-output.visible { display: block; }
-  .ai-bubble {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 10px; padding: 14px 16px;
-    font-size: 13px; color: var(--text2); line-height: 1.6;
-    margin-bottom: 12px;
-  }
-  .ai-bubble strong { color: var(--text); }
-  .ai-typing { display: inline-flex; gap: 4px; align-items: center; }
-  .ai-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); animation: blink 1.2s infinite; }
-  .ai-dot:nth-child(2) { animation-delay: 0.2s; }
-  .ai-dot:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes blink { 0%,80%,100%{opacity:0.2} 40%{opacity:1} }
-
-  /* ── PRICING ── */
-  .pricing-section {
-    background: var(--surface);
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-    padding: 60px 2rem;
-    margin-bottom: 0;
-  }
-  .pricing-inner { max-width: 900px; margin: 0 auto; }
-  .pricing-header { text-align: center; margin-bottom: 40px; }
-  .pricing-h2 {
-    font-family: var(--font-display); font-size: 36px; font-weight: 800;
-    margin-bottom: 8px;
-  }
-  .pricing-sub { font-size: 14px; color: var(--text2); }
-  .pricing-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
-  .pricing-card {
-    background: var(--bg2); border: 1px solid var(--border);
-    border-radius: 14px; padding: 24px 22px;
-  }
-  .pricing-card.featured {
-    border-color: var(--green); background: rgba(124,189,30,0.06);
-  }
-  .pricing-featured-badge {
-    display: inline-block; font-size: 10px; font-weight: 600;
-    background: var(--green); color: #0a1007;
-    padding: 3px 10px; border-radius: 4px;
-    margin-bottom: 12px; font-family: var(--font-body);
-    letter-spacing: 0.5px;
-  }
-  .pricing-plan { font-size: 12px; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
-  .pricing-price { font-family: var(--font-display); font-size: 38px; font-weight: 800; color: var(--green); line-height: 1; }
-  .pricing-price span { font-size: 14px; font-weight: 400; color: var(--text3); font-family: var(--font-body); }
-  .pricing-desc { font-size: 12px; color: var(--text2); margin: 8px 0 16px; line-height: 1.5; }
-  .pricing-features { list-style: none; display: flex; flex-direction: column; gap: 7px; margin-bottom: 20px; }
-  .pricing-features li { font-size: 12px; color: var(--text2); display: flex; align-items: center; gap: 7px; }
-  .pricing-features li::before { content: '✓'; color: var(--green); font-weight: 700; font-size: 11px; flex-shrink: 0; }
-  .pricing-btn {
-    width: 100%; padding: 10px; border-radius: 7px; font-size: 13px;
-    font-weight: 600; cursor: pointer; border: 1px solid var(--border2);
-    background: transparent; color: var(--text2); font-family: var(--font-body);
-    transition: all 0.15s;
-  }
-  .pricing-btn:hover { background: var(--surface); color: var(--text); }
-  .pricing-card.featured .pricing-btn {
-    background: var(--green); color: #0a1007; border-color: var(--green);
-  }
-  .pricing-card.featured .pricing-btn:hover { opacity: 0.88; }
-
-  /* ── FOOTER ── */
-  footer {
-    background: var(--bg2); border-top: 1px solid var(--border);
-    padding: 32px 2rem; text-align: center;
-  }
-  .footer-logo { font-family: var(--font-display); font-size: 18px; font-weight: 800; margin-bottom: 8px; }
-  .footer-logo span { color: var(--green); }
-  .footer-tagline { font-size: 12px; color: var(--text3); }
-
-  /* ── TOAST ── */
-  .toast {
-    position: fixed; bottom: 24px; right: 24px;
-    background: var(--surface2); border: 1px solid var(--border2);
-    color: var(--text); font-size: 13px; font-family: var(--font-body);
-    padding: 12px 18px; border-radius: 8px;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
-    transform: translateY(80px); opacity: 0;
-    transition: all 0.3s; z-index: 999;
-    display: flex; align-items: center; gap: 8px;
-  }
-  .toast.show { transform: translateY(0); opacity: 1; }
-  .toast-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
-
-  /* ── LOADING STATE ── */
-  .analyzing-overlay {
-    display: none; position: fixed; inset: 0;
-    background: rgba(12,20,9,0.85); backdrop-filter: blur(6px);
-    z-index: 200; align-items: center; justify-content: center;
-    flex-direction: column; gap: 16px;
-  }
-  .analyzing-overlay.show { display: flex; }
-  .spinner {
-    width: 48px; height: 48px; border: 3px solid var(--border);
-    border-top-color: var(--green); border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .analyzing-text { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--green); }
-  .analyzing-sub { font-size: 12px; color: var(--text2); }
-
-  /* ── RESPONSIVE ── */
-  @media (max-width: 760px) {
-    .hero { grid-template-columns: 1fr; gap: 32px; padding: 40px 1.25rem 32px; }
-    .hero-visual { display: none; }
-    .dashboard { padding: 0 1.25rem 60px; }
-    .dashboard-grid { grid-template-columns: 1fr; }
-    .dashboard-grid-3 { grid-template-columns: 1fr; }
-    .pricing-grid { grid-template-columns: 1fr; }
-    nav { padding: 0 1.25rem; }
-    .nav-link { display: none; }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation: none !important; transition: none !important; }
-  }
+}
+</script>
+</body>
+</html>
