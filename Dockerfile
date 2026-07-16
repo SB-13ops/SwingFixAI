@@ -2,7 +2,7 @@ FROM python:3.12-slim
 
 # System libraries OpenCV and MediaPipe need
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libglib2.0-0 libsm6 libxext6 libgl1 ffmpeg \
+    libglib2.0-0 libsm6 libxext6 libgl1 libgles2 libegl1 ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
