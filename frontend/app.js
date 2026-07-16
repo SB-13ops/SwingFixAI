@@ -654,7 +654,7 @@ async function runAnalysis() {
 }
 
 async function pollJob(jobId, stepEl) {
-  for (var i = 0; i < 150; i++) {
+  for (var i = 0; i < 300; i++) {
     await new Promise(function(r) { setTimeout(r, 2000); });
     try {
       var res = await fetch(API_BASE + '/api/job/' + jobId);
