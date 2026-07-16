@@ -366,10 +366,19 @@ def extract_pose_data(video_path: str, sample_rate: int = 8) -> dict:
         if not ret:
             break
         if frame_idx % sample_rate == 0:
-            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            # Downscale before pose detection - big memory/CPU savings on
+            # small cloud instances, negligible accuracy cost (landmarks
+            # are normalized 0-1 so downstream math is unaffected).
+            h0, w0 = frame.shape[:2]
+            if w0 > 960:
+                scale = 960 / w0
+                frame_small = cv2.resize(frame, (960, int(h0 * scale)))
+            else:
+                frame_small = frame
+            rgb = cv2.cvtColor(frame_small, cv2.COLOR_BGR2RGB)
             lm = pose_detector.process(rgb)
             if lm:
-                snapshot = extract_key_angles(lm, frame.shape)
+                snapshot = extract_key_angles(lm, frame_small.shape)
                 snapshot["frame"] = frame_idx
                 snapshot["time_pct"] = frame_idx / max(total_frames - 1, 1)
                 # Wrist tracking for phase detection (lead wrist)
