@@ -1122,8 +1122,9 @@ async def run_analysis_job(job_id: str, video_paths: dict, keep_files: bool = Fa
         save_jobs()
 
     except Exception as e:
+        import traceback
         jobs[job_id]["status"] = "error"
-        jobs[job_id]["error"]  = str(e)
+        jobs[job_id]["error"]  = f"{type(e).__name__}: {e} | " + traceback.format_exc()[-500:]
         jobs[job_id]["step"]   = "Error"
         save_jobs()
 
