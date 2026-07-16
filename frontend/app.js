@@ -52,7 +52,7 @@ async function pollRemoteVideos() {
   } catch (e) { /* backend gone - stop quietly */ }
 }
 
-function scrollTo(id) {
+function scrollToSection(id) {
   document.getElementById(id).scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -90,8 +90,27 @@ uploadZone.addEventListener('drop', function(e) {
 document.addEventListener('dragover', function(e) { e.preventDefault(); });
 document.addEventListener('drop',     function(e) { e.preventDefault(); });
 
+function resetAllSlots() {
+  uploadedFiles = {};
+  remoteSlots = {};
+  slotOrder.forEach(function(s) {
+    slots[s] = false;
+    var el = document.getElementById('slot-' + s);
+    if (el) el.classList.remove('loaded');
+  });
+  skeletonTracks = {};
+  overlayFaults = null;
+}
+
 function handleFiles(files) {
-  Array.from(files).forEach(function(f) {
+  var arr = Array.from(files);
+  if (!arr.length) return;
+  var anyFree = slotOrder.some(function(s) { return !slots[s]; });
+  if (!anyFree) {
+    resetAllSlots();
+    showToast('Starting a new set of swing videos');
+  }
+  arr.forEach(function(f) {
     var slot = slotOrder.find(function(s) { return !slots[s]; });
     if (slot) assignFileToSlot(f, slot);
   });

@@ -7,7 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<link rel="stylesheet" href="/static/style.css?v=9">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>&#127948;</text></svg>">
+<link rel="stylesheet" href="/static/style.css?v=10">
 </head>
 <body>
 
@@ -15,10 +16,10 @@
 <nav>
   <div class="nav-logo">Swing<span>Fix</span> AI</div>
   <div class="nav-links">
-    <button class="nav-link" onclick="scrollTo('dashboard')">Analyze</button>
-    <button class="nav-link" onclick="scrollTo('pricing')">Pricing</button>
+    <button class="nav-link" onclick="scrollToSection('dashboard')">Analyze</button>
+    <button class="nav-link" onclick="scrollToSection('pricing')">Pricing</button>
     <span class="nav-badge">3 free analyses</span>
-    <button class="nav-cta" onclick="scrollTo('dashboard')">Upload Swing</button>
+    <button class="nav-cta" onclick="scrollToSection('dashboard')">Upload Swing</button>
   </div>
 </nav>
 
@@ -29,8 +30,8 @@
     <h1 class="hero-h1">Fix your swing.<br><em>See it from every angle.</em></h1>
     <p class="hero-sub">Upload up to 3 angles of your swing — face-on, down-the-line, front-facing. Get a complete coaching report with faults, fixes, and drills in under 60 seconds.</p>
     <div class="hero-actions">
-      <button class="btn-primary" onclick="scrollTo('dashboard')">Upload My Swing</button>
-      <button class="btn-secondary" onclick="scrollTo('dashboard')">Try a Demo Swing</button>
+      <button class="btn-primary" onclick="scrollToSection('dashboard')">Upload My Swing</button>
+      <button class="btn-secondary" onclick="scrollToSection('dashboard')">Try a Demo Swing</button>
     </div>
     <div class="hero-stats">
       <div>
@@ -329,7 +330,7 @@
           <li>3 recommended drills</li>
           <li>Basic swing score</li>
         </ul>
-        <button class="pricing-btn" onclick="scrollTo('dashboard')">Start free</button>
+        <button class="pricing-btn" onclick="scrollToSection('dashboard')">Start free</button>
       </div>
       <div class="pricing-card featured">
         <div class="pricing-featured-badge">Most popular</div>
@@ -384,6 +385,6 @@
 
 <input type="file" id="slotPicker" accept="video/*" style="display:none" onchange="handleSlotPick(this)">
 <input type="file" id="zonePicker" accept="video/*" multiple style="display:none" onchange="handleFiles(this.files)">
-<script src="/static/app.js?v=9"></script>
+<script src="/static/app.js?v=10"></script>
 </body>
 </html>
