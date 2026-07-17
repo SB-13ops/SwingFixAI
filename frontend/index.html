@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>&#127948;</text></svg>">
-<link rel="stylesheet" href="/static/style.css?v=11">
+<link rel="stylesheet" href="/static/style.css?v=12">
 </head>
 <body>
 
@@ -284,7 +284,8 @@
       <div class="tab-row" id="ghostTabs" style="margin-bottom:10px;">
         <span style="font-size:11px;color:var(--text3);align-self:center;margin-right:4px;">Compare:</span>
         <button class="tab active" onclick="setGhostMode('setup',this)">My setup</button>
-        <button class="tab" onclick="setGhostMode('pro',this)">Pro form</button>
+        <button class="tab" onclick="setGhostMode('pro',this)">Pro skeleton</button>
+        <button class="tab" onclick="setGhostMode('figure',this)">Pro figure</button>
         <button class="tab" onclick="setGhostMode('off',this)">Off</button>
       </div>
       <div class="tab-row" id="replayViewTabs" style="margin-bottom:10px;">
@@ -409,6 +410,6 @@
 
 <input type="file" id="slotPicker" accept="video/*" style="display:none" onchange="handleSlotPick(this)">
 <input type="file" id="zonePicker" accept="video/*" multiple style="display:none" onchange="handleFiles(this.files)">
-<script src="/static/app.js?v=11"></script>
+<script src="/static/app.js?v=12"></script>
 </body>
 </html>
