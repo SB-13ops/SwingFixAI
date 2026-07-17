@@ -825,6 +825,114 @@ function setTab(el, groupId) {
   el.classList.add('active');
 }
 
+
+
+// ---- IN-BROWSER RECORDING ----
+var recStream = null;
+var recRecorder = null;
+var recChunks = [];
+var recTimerInt = null;
+var recAutoStop = null;
+
+async function openRecorder() {
+  var modal = document.getElementById('recorderModal');
+  try {
+    recStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    });
+  } catch (e) {
+    try {
+      recStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    } catch (e2) {
+      showToast('Camera access denied - check browser permissions');
+      return;
+    }
+  }
+  document.getElementById('recPreview').srcObject = recStream;
+  modal.style.display = 'flex';
+  document.getElementById('recStartBtn').style.display = 'inline-block';
+  document.getElementById('recStopBtn').style.display = 'none';
+}
+
+function closeRecorder() {
+  if (recRecorder && recRecorder.state === 'recording') recRecorder.stop();
+  if (recStream) { recStream.getTracks().forEach(function(t) { t.stop(); }); recStream = null; }
+  clearInterval(recTimerInt);
+  clearTimeout(recAutoStop);
+  document.getElementById('recorderModal').style.display = 'none';
+  document.getElementById('recCountdown').style.display = 'none';
+  document.getElementById('recIndicator').style.display = 'none';
+}
+
+function startCountdown() {
+  var cd = document.getElementById('recCountdown');
+  document.getElementById('recStartBtn').style.display = 'none';
+  cd.style.display = 'flex';
+  var n = 3;
+  cd.textContent = n;
+  var int = setInterval(function() {
+    n--;
+    if (n > 0) { cd.textContent = n; }
+    else {
+      clearInterval(int);
+      cd.style.display = 'none';
+      beginRecording();
+    }
+  }, 1000);
+}
+
+function pickMimeType() {
+  var candidates = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'];
+  for (var i = 0; i < candidates.length; i++) {
+    if (window.MediaRecorder && MediaRecorder.isTypeSupported(candidates[i])) return candidates[i];
+  }
+  return '';
+}
+
+function beginRecording() {
+  if (!recStream) return;
+  recChunks = [];
+  var mime = pickMimeType();
+  try {
+    recRecorder = mime ? new MediaRecorder(recStream, { mimeType: mime }) : new MediaRecorder(recStream);
+  } catch (e) {
+    showToast('Recording not supported in this browser');
+    closeRecorder();
+    return;
+  }
+  recRecorder.ondataavailable = function(e) { if (e.data && e.data.size) recChunks.push(e.data); };
+  recRecorder.onstop = finishRecording;
+  recRecorder.start();
+
+  var ind = document.getElementById('recIndicator');
+  ind.style.display = 'flex';
+  document.getElementById('recStopBtn').style.display = 'inline-block';
+  var start = Date.now();
+  recTimerInt = setInterval(function() {
+    var s = Math.floor((Date.now() - start) / 1000);
+    document.getElementById('recTimer').textContent = Math.floor(s/60) + ':' + ('0' + (s % 60)).slice(-2);
+  }, 500);
+  recAutoStop = setTimeout(function() { stopRecording(); }, 30000);
+}
+
+function stopRecording() {
+  clearInterval(recTimerInt);
+  clearTimeout(recAutoStop);
+  if (recRecorder && recRecorder.state === 'recording') recRecorder.stop();
+}
+
+function finishRecording() {
+  var mime = (recRecorder && recRecorder.mimeType) || 'video/webm';
+  var ext = mime.indexOf('mp4') !== -1 ? 'mp4' : 'webm';
+  var blob = new Blob(recChunks, { type: mime });
+  if (!blob.size) { showToast('Recording was empty - try again'); closeRecorder(); return; }
+  var file = new File([blob], 'swing-recording-' + Date.now() + '.' + ext, { type: mime });
+  closeRecorder();
+  handleFiles([file]);
+  showToast('Recording saved (' + (blob.size / 1024 / 1024).toFixed(1) + ' MB) - added to slots');
+}
+
 // ---- INIT ----
 updateAnalyzeBtn();
 initSession();
