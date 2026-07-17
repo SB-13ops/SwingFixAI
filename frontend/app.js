@@ -455,6 +455,13 @@ function drawScene(vid, canvas) {
   } else if (ghostMode === 'pro') {
     var proPts = buildProImpact(track);
     if (proPts) drawSkeleton(ctx, proPts, w, h, 'rgba(232,184,75,0.95)', Math.max(2, w*0.003), true);
+  } else if (ghostMode === 'figure') {
+    if (!figurePosesCache || figurePosesForSlot !== currentOverlaySlot) {
+      figurePosesCache = buildFigurePoses(track);
+      figurePosesForSlot = currentOverlaySlot;
+    }
+    var fp = figurePoseAt(figurePosesCache, figureProgress(t));
+    if (fp) drawVirtualGolfer(ctx, fp, w, h);
   }
 
   // Live skeleton at current playback time
@@ -652,7 +659,7 @@ async function runAnalysis() {
   }
   if (result && result.coaching) {
     overlayFaults = result.coaching.faults;
-    if (result.skeletons) skeletonTracks = result.skeletons;
+    if (result.skeletons) { skeletonTracks = result.skeletons; figurePosesCache = null; }
     applyViewCorrections(result.view_corrections || {});
     var hint = document.getElementById('skelHint');
     if (hint && Object.keys(skeletonTracks).length) hint.style.display = 'none';
@@ -826,6 +833,168 @@ function setTab(el, groupId) {
 }
 
 
+
+
+
+// ---- VIRTUAL PRO FIGURE (solid-body golfer, phase-synced) ----
+// Canonical swing timeline positions for the keyframe poses below
+var FIGURE_T = [0, 0.16, 0.36, 0.52, 0.64, 0.85, 1.0];
+
+function buildFigurePoses(track) {
+  // Build 7 keyframe poses (address..finish) scaled to the user's body:
+  // anchored at their ankle midpoint, sized by their torso and hip width.
+  if (!track || !track.length) return null;
+  var setup = skeletonAt(track, Math.min(phaseBounds[1] * 0.5, 0.08));
+  var finish = track[track.length - 1].pts;
+  var d = bodyDims(setup);
+  if (!d || !setup.la || !setup.ra || !finish || !finish.lw) return null;
+
+  var dir = (finish.lw[0] - setup.lw[0]) >= 0 ? 1 : -1;
+  var ax = (setup.la[0] + setup.ra[0]) / 2;           // ankle-mid anchor x
+  var ay = Math.max(setup.la[1], setup.ra[1]);        // ground line y
+  var s = d.torso;                                    // scale unit
+  var hw = Math.max(d.hipW, s * 0.28);
+  // Side views get a narrowed profile so the figure reads correctly
+  var prof = (currentOverlaySlot === 'faceon') ? 1.0 : 0.35;
+
+  function pose(hipShift, hipDrop, shoulderTurn, handX, handY, leadKneeFlex, trailKneeFlex, headX, headY) {
+    // All params in body units relative to anchor; x positive = toward target
+    var hipC = [ax + dir * hipShift * s, ay - s * (1.05 - hipDrop)];
+    var shC  = [hipC[0] - dir * 0.06 * s, hipC[1] - s];
+    var p = {};
+    p.lh = [hipC[0] - dir * hw * 0.5 * prof * (1 - shoulderTurn * 0.3), hipC[1]];
+    p.rh = [hipC[0] + dir * hw * 0.5 * prof * (1 - shoulderTurn * 0.3), hipC[1]];
+    var sw = hw * 1.15 * prof * (1 - shoulderTurn * 0.55);
+    p.ls = [shC[0] - dir * sw * 0.5, shC[1] + shoulderTurn * 0.04 * s];
+    p.rs = [shC[0] + dir * sw * 0.5, shC[1] - shoulderTurn * 0.04 * s];
+    p.nose = [shC[0] + dir * headX * s, shC[1] - 0.28 * s + headY * s];
+    p.la = [ax - dir * hw * 0.55 * prof, ay];
+    p.ra = [ax + dir * hw * 0.55 * prof, ay];
+    // Lead leg = target side
+    var leadA = (dir > 0) ? p.ra : p.la;
+    var trailA = (dir > 0) ? p.la : p.ra;
+    var leadH = (dir > 0) ? p.rh : p.lh;
+    var trailH = (dir > 0) ? p.lh : p.rh;
+    var lk = [(leadH[0] + leadA[0]) / 2 + dir * leadKneeFlex * 0.12 * s, (leadH[1] + leadA[1]) / 2];
+    var tk = [(trailH[0] + trailA[0]) / 2 + dir * trailKneeFlex * 0.12 * s, (trailH[1] + trailA[1]) / 2];
+    if (dir > 0) { p.rk = lk; p.lk = tk; } else { p.lk = lk; p.rk = tk; }
+    // Hands together on the club
+    var hx = ax + dir * handX * s, hy = ay - handY * s;
+    p.lw = [hx, hy];
+    p.rw = [hx - dir * 0.05 * s, hy + 0.03 * s];
+    p.le = [(p.ls[0] + p.lw[0]) / 2, (p.ls[1] + p.lw[1]) / 2 + 0.05 * s];
+    p.re = [(p.rs[0] + p.rw[0]) / 2, (p.rs[1] + p.rw[1]) / 2 + 0.05 * s];
+    return p;
+  }
+
+  return [
+    //     hipShift hipDrop turn  handX  handY leadFlex trailFlex headX headY
+    pose(  0.00,   0.00,  0.0,  -0.05,  0.35,  0.6,  0.6,  0.00, 0.00),  // address
+    pose( -0.04,   0.00,  0.35, -0.55,  0.75,  0.5,  0.7, -0.02, 0.00),  // takeaway
+    pose( -0.08,   0.02,  0.85, -0.50,  1.85,  0.4,  0.8, -0.04, 0.02),  // top
+    pose(  0.10,   0.00,  0.55, -0.35,  0.90,  0.4,  0.9, -0.03, 0.01),  // downswing
+    pose(  0.16,   0.00,  0.25,  0.30,  0.30,  0.1,  1.1, -0.05, 0.00),  // impact
+    pose(  0.22,  -0.02, -0.45,  0.70,  1.60,  0.0,  1.3,  0.02, 0.02),  // follow
+    pose(  0.24,  -0.02, -0.55,  0.55,  1.90,  0.0,  1.4,  0.03, 0.03)   // finish
+  ];
+}
+
+function figureProgress(t) {
+  // Map video time (with the user's detected phase bounds) onto the
+  // canonical figure timeline so the pro figure swings in sync.
+  var b = phaseBounds.concat([1.0]);            // 7 boundary points
+  for (var i = 0; i < 6; i++) {
+    if (t >= b[i] && t <= b[i + 1]) {
+      var f = (t - b[i]) / Math.max(b[i + 1] - b[i], 1e-6);
+      return FIGURE_T[i] + f * (FIGURE_T[i + 1] - FIGURE_T[i]);
+    }
+  }
+  return t <= 0 ? 0 : 1;
+}
+
+function figurePoseAt(poses, prog) {
+  if (!poses) return null;
+  if (prog <= 0) return poses[0];
+  if (prog >= 1) return poses[poses.length - 1];
+  for (var i = 0; i < FIGURE_T.length - 1; i++) {
+    if (prog >= FIGURE_T[i] && prog <= FIGURE_T[i + 1]) {
+      var f = (prog - FIGURE_T[i]) / (FIGURE_T[i + 1] - FIGURE_T[i]);
+      var a = poses[i], b = poses[i + 1], out = {};
+      Object.keys(a).forEach(function(k) {
+        out[k] = [a[k][0] + (b[k][0] - a[k][0]) * f, a[k][1] + (b[k][1] - a[k][1]) * f];
+      });
+      return out;
+    }
+  }
+  return poses[poses.length - 1];
+}
+
+function drawVirtualGolfer(ctx, p, w, h) {
+  if (!p) return;
+  var unit = Math.hypot((p.ls[0] - p.lh[0]) * w, (p.ls[1] - p.lh[1]) * h); // torso px
+  var limbW = Math.max(6, unit * 0.16);
+  var fill = 'rgba(232,184,75,0.45)';
+  var edge = 'rgba(232,184,75,0.9)';
+
+  function px(pt) { return [pt[0] * w, pt[1] * h]; }
+  function capsule(a, b, width) {
+    var A = px(a), B = px(b);
+    ctx.lineWidth = width;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]); ctx.stroke();
+  }
+
+  ctx.save();
+  // Torso: filled shape shoulders -> hips
+  var LS = px(p.ls), RS = px(p.rs), LH = px(p.lh), RH = px(p.rh);
+  ctx.fillStyle = fill;
+  ctx.strokeStyle = edge;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(LS[0], LS[1]);
+  ctx.lineTo(RS[0], RS[1]);
+  ctx.lineTo(RH[0], RH[1]);
+  ctx.lineTo(LH[0], LH[1]);
+  ctx.closePath();
+  ctx.fill(); ctx.stroke();
+
+  // Limbs as translucent capsules
+  ctx.strokeStyle = fill;
+  capsule(p.ls, p.le, limbW); capsule(p.le, p.lw, limbW * 0.85);
+  capsule(p.rs, p.re, limbW); capsule(p.re, p.rw, limbW * 0.85);
+  capsule(p.lh, p.lk, limbW * 1.2); capsule(p.lk, p.la, limbW);
+  capsule(p.rh, p.rk, limbW * 1.2); capsule(p.rk, p.ra, limbW);
+  // Edge pass for definition
+  ctx.strokeStyle = edge;
+  capsule(p.ls, p.le, 2); capsule(p.le, p.lw, 2);
+  capsule(p.rs, p.re, 2); capsule(p.re, p.rw, 2);
+  capsule(p.lh, p.lk, 2); capsule(p.lk, p.la, 2);
+  capsule(p.rh, p.rk, 2); capsule(p.rk, p.ra, 2);
+
+  // Head
+  var N = px(p.nose);
+  var headR = unit * 0.16;
+  ctx.fillStyle = fill;
+  ctx.beginPath(); ctx.arc(N[0], N[1], headR, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = edge; ctx.lineWidth = 2; ctx.stroke();
+
+  // Club: from hands, angled by swing progress via wrist height
+  var HW = px(p.lw);
+  var clubLen = unit * 1.1;
+  var groundY = Math.max(px(p.la)[1], px(p.ra)[1]);
+  var toGround = Math.max(groundY - HW[1], unit * 0.2);
+  var angle = Math.atan2(toGround, clubLen * 0.4);
+  ctx.strokeStyle = edge;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(HW[0], HW[1]);
+  ctx.lineTo(HW[0] + Math.cos(angle) * clubLen * 0.5, HW[1] + Math.sin(angle) * clubLen);
+  ctx.stroke();
+  ctx.restore();
+}
+
+var figurePosesCache = null;
+var figurePosesForSlot = null;
 
 // ---- IN-BROWSER RECORDING ----
 var recStream = null;
