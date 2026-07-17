@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>&#127948;</text></svg>">
-<link rel="stylesheet" href="/static/style.css?v=10">
+<link rel="stylesheet" href="/static/style.css?v=11">
 </head>
 <body>
 
@@ -123,6 +123,7 @@
         <span class="upload-icon">🎥</span>
         <div class="upload-title">Drop videos or click to browse</div>
         <div class="upload-hint">MP4, MOV · Up to 3 swing views</div>
+        <button onclick="event.stopPropagation(); openRecorder();" style="margin-top:10px;background:transparent;color:var(--green);border:1px solid var(--border2);border-radius:7px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-body);">&#9210; Record with camera</button>
       </div>
 
       <div class="view-slots" id="viewSlots">
@@ -383,8 +384,31 @@
   <span id="toastMsg">Video uploaded</span>
 </div>
 
+
+<div id="recorderModal" style="display:none;position:fixed;inset:0;background:rgba(12,20,9,0.92);z-index:300;align-items:center;justify-content:center;flex-direction:column;padding:20px;">
+  <div style="width:100%;max-width:640px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--text);">Record your swing</div>
+      <button onclick="closeRecorder()" style="background:none;border:none;color:var(--text2);font-size:22px;cursor:pointer;" aria-label="Close">&times;</button>
+    </div>
+    <div style="position:relative;background:#000;border-radius:12px;overflow:hidden;">
+      <video id="recPreview" style="width:100%;display:block;max-height:60vh;" autoplay muted playsinline></video>
+      <div id="recCountdown" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;font-family:var(--font-display);font-size:110px;font-weight:800;color:var(--green);text-shadow:0 2px 20px rgba(0,0,0,0.7);"></div>
+      <div id="recIndicator" style="display:none;position:absolute;top:12px;left:12px;background:rgba(0,0,0,0.6);color:#fff;border-radius:6px;padding:5px 12px;font-size:13px;align-items:center;gap:8px;">
+        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#E24B4A;animation:pulse 1s infinite;"></span>
+        <span id="recTimer">0:00</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:12px;justify-content:center;">
+      <button id="recStartBtn" onclick="startCountdown()" style="background:var(--green);color:#0a1007;border:none;border-radius:8px;padding:12px 28px;font-family:var(--font-display);font-size:16px;font-weight:700;cursor:pointer;">Start (3s countdown)</button>
+      <button id="recStopBtn" onclick="stopRecording()" style="display:none;background:#E24B4A;color:#fff;border:none;border-radius:8px;padding:12px 28px;font-family:var(--font-display);font-size:16px;font-weight:700;cursor:pointer;">Stop</button>
+    </div>
+    <div style="text-align:center;font-size:11px;color:var(--text3);margin-top:8px;font-family:var(--font-body);">Recording stops automatically after 30 seconds. Position the camera so your full body is in frame.</div>
+  </div>
+</div>
+
 <input type="file" id="slotPicker" accept="video/*" style="display:none" onchange="handleSlotPick(this)">
 <input type="file" id="zonePicker" accept="video/*" multiple style="display:none" onchange="handleFiles(this.files)">
-<script src="/static/app.js?v=10"></script>
+<script src="/static/app.js?v=11"></script>
 </body>
 </html>
